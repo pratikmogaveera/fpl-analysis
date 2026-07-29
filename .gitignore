@@ -20,3 +20,7 @@ data/*.csv
 
 # macOS
 .DS_Store
+
+# ai-agent
+.kiro
+
