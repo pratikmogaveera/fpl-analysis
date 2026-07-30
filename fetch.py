@@ -1,6 +1,7 @@
 import json
 from datetime import date
 from pathlib import Path
+from typing import TypedDict
 
 import pandas as pd
 import requests
@@ -10,15 +11,28 @@ players_master_xlsx_path = "./data/players_master.xlsx"
 teams_master_xlsx_path = "./data/teams_master.xlsx"
 
 
-def dump_raw_data():
+class FplResponse(TypedDict):
+  chips: list[dict]
+  events: list[dict]
+  game_settings: dict
+  game_config: dict
+  phases: list[dict]
+  teams: list[dict]
+  total_players: int
+  element_stats: list[dict]
+  element_types: list[dict]
+  elements: list[dict]
+
+
+def dump_raw_data() -> tuple[FplResponse, int] | None:
   try:
     response = requests.get(url)
     response.raise_for_status()
     data = response.json()
 
     events = data["events"]
-    upcoming_gameweek_title = None
-    upcoming_gameweek_id = None
+    upcoming_gameweek_title: str | None = None
+    upcoming_gameweek_id: int | None = None
     for event in events:
       if event["is_next"]:
         upcoming_gameweek_id = event["id"]
@@ -45,7 +59,7 @@ def dump_raw_data():
     print(f"✗ Error: {e}")
 
 
-def dump_data(data, path, gw_id):
+def dump_data(data: list[dict], path: str, gw_id: int) -> None:
   try:
     df = pd.DataFrame(data)
 
