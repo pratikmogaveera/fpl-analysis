@@ -1,9 +1,13 @@
-from datetime import date
 import json
+from datetime import date
 from pathlib import Path
+
+import pandas as pd
 import requests
 
 url = 'https://fantasy.premierleague.com/api/bootstrap-static/'
+players_master_xlsx_path = "./data/players_master.xlsx"
+teams_master_xlsx_path = "./data/teams_master.xlsx"
 
 
 def dump_raw_data():
@@ -35,9 +39,32 @@ def dump_raw_data():
         json.dump(data, file, indent=2)
       print(f"✓ {upcoming_gameweek_title}'s data successfully dumped.")
 
+    return data, upcoming_gameweek_id
+
   except Exception as e:
     print(f"✗ Error: {e}")
 
 
+def dump_data(data, path, gw_id):
+  try:
+    df = pd.DataFrame(data)
+
+    if_xlsx_exists = Path(path).is_file()
+    writer_kwargs = {"engine": "openpyxl", "mode": "a", "if_sheet_exists": "replace"} if if_xlsx_exists else {"engine":
+                                                                                                              "openpyxl", "mode": "w"}
+    with pd.ExcelWriter(path, **writer_kwargs) as writer:  # type: ignore
+      df.to_excel(writer, sheet_name=f"GW{gw_id}", index=False)
+
+    print("✓ Data dumped successfully.")
+  except Exception as e:
+    print(f"✗ Data Dump Error: {e}")
+
+
 if __name__ == "__main__":
-  dump_raw_data()
+  result = dump_raw_data()
+  if result:
+    data, gw_id = result
+    print('Dumping players master...')
+    dump_data(data["elements"], players_master_xlsx_path, gw_id)
+    print('Dumping teams master...')
+    dump_data(data["teams"], teams_master_xlsx_path, gw_id)
