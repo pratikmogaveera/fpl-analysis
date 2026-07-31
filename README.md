@@ -31,6 +31,7 @@ python fetch.py
 fpl-analysis/
 ├── fetch.py            — fetches bootstrap API, saves JSON + updates xlsx files
 ├── explore.py          — Phase 1: inspect bootstrap JSON structure and player columns
+├── analysis.py         — Phase 2+: load players DataFrame, add name/team/position columns
 ├── data/
 │   ├── raw/            — weekly JSON snapshots (gw{n}_{date}.json)
 │   ├── players.xlsx    — elements data, one sheet per GW
@@ -45,7 +46,7 @@ fpl-analysis/
 
 - [x] Phase 0 — Data pipeline (fetch + store)
 - [x] Phase 1 — Setup & data exploration
-- [ ] Phase 2 — Pandas basics
+- [x] Phase 2 — Pandas basics
 - [ ] Phase 3 — Data cleaning & normalization
 - [ ] Phase 4 — Exploratory analysis
 - [ ] Phase 5 — Fixture difficulty

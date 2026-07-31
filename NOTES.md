@@ -94,7 +94,45 @@ Iterates over `data` (the top-level dict), checks the type of each value, and pr
 
 ---
 
-## Q&A
+## 2. Pandas Basics — Loading & Inspecting
+
+### Key Concepts
+
+**Three ways to add/join columns to a DataFrame:**
+
+| Method | When to use | Example |
+|--------|-------------|---------|
+| Direct computation | Derive from existing columns of the same DataFrame | `df["full_name"] = df["first_name"] + " " + df["second_name"]` |
+| `df.map(dict)` | Map one column's values to another using a lookup dict | `df["position"] = df["element_type"].map({1: "GKP", 2: "DEF", ...})` |
+| `pd.merge(left, right, how, left_on, right_on)` | Join two DataFrames on a shared key — use when you need multiple columns from the other table | `pd.merge(players_df, teams_df, "left", left_on="team", right_on="id")` |
+
+**Use `.map()` over `pd.merge()` when you only need one column** — merge adds all columns from the right DataFrame and bloats the result.
+
+**Dict comprehension as the lookup for `.map()`:**
+```python
+players_df["team_name"] = players_df["team_code"].map(
+    {team["code"]: team["name"] for team in data["teams"]}
+)
+```
+The dict comprehension builds `{code: name, ...}` on the fly — no need to create a separate DataFrame.
+
+### Inspection methods
+
+| Method | What it tells you |
+|--------|------------------|
+| `df.shape` | `(rows, cols)` — quick size check |
+| `df.info()` | Column names, non-null counts, dtypes, memory usage — most useful overview |
+| `df.dtypes` | Per-column dtype — shows which columns are wrong type at a glance |
+| `df.head(n)` | First n rows — default 5 |
+
+### dtype observations on `elements`
+
+- `str(33)` — 33 string columns, many are numbers stored as strings (`form`, `points_per_game`, `ep_next`, ICT fields, `expected_*`) — must cast in Phase 3
+- `object(4)` — mixed/ambiguous types, including `chance_of_playing_this_round`
+- `float64(14)`, `int64(51)` — already numeric, usable directly
+- `chance_of_playing_this_round` is `object` while `chance_of_playing_next_round` is `float64` — caused by `None` values mixed with numbers in the pre-season state
+
+
 
 ### Why use `pd.DataFrame(list)` instead of `pd.read_json(list)`?
 `pd.read_json` expects a JSON string or a file path — it will try to parse its argument as raw text. `data["elements"]` is already a Python list of dicts (parsed by `json.load`), so passing it to `pd.read_json` would fail or produce wrong results. `pd.DataFrame(list_of_dicts)` is the correct constructor for this case.
