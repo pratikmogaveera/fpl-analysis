@@ -47,7 +47,7 @@ fpl-analysis/
 - [x] Phase 0 — Data pipeline (fetch + store)
 - [x] Phase 1 — Setup & data exploration
 - [x] Phase 2 — Pandas basics
-- [ ] Phase 3 — Data cleaning & normalization
+- [x] Phase 3 — Data cleaning & normalization
 - [ ] Phase 4 — Exploratory analysis
 - [ ] Phase 5 — Fixture difficulty
 - [ ] Phase 6 — Next GW scoring model

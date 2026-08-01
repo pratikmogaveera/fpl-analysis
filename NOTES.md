@@ -142,3 +142,45 @@ The dict comprehension builds `{code: name, ...}` on the fly — no need to crea
 
 ### Why is `now_cost` stored as an integer like 60 instead of 6.0?
 FPL stores costs multiplied by 10 to avoid floating point in the database. Divide by 10 to get the £ value: `df["cost"] = df["now_cost"] / 10`.
+
+---
+
+## 3. Data Cleaning & Normalization
+
+### Key Concepts
+
+**`pd.to_numeric(series, errors='coerce')`** — converts a Series to numeric. `errors='coerce'` turns unconvertible values into `NaN` instead of raising — safe for messy data. Must assign back: `df[col] = pd.to_numeric(df[col], errors='coerce')`.
+
+**`df[col].fillna(value)`** — replaces `NaN` with a default. Returns a new Series — must assign back. Common patterns:
+- `fillna(100)` — treat missing availability as fully fit
+- `fillna(0)` — treat missing expected points as zero
+
+**Boolean indexing / filtering:**
+```python
+df = df[df['status'].isin(['a', 'i', 'd'])]
+```
+`.isin(list)` returns a boolean Series — `True` for rows to keep. Reassign to drop the excluded rows.
+
+**`df.size` vs `len(df)` vs `df.shape[0]`**
+- `df.size` — total cells (rows × columns) — rarely what you want
+- `len(df)` or `df.shape[0]` — row count — use these to verify filter results
+
+### Cleaning steps applied
+
+| Step | Code pattern | Result |
+|------|-------------|--------|
+| Cast string numerics | `pd.to_numeric(df[col], errors='coerce')` | 14 columns: str → float64 |
+| Fill availability nulls | `fillna(100)` | NaN → 100% available |
+| Fill ep_next nulls | `fillna(0)` | NaN → 0 expected points |
+| Filter inactive players | `.isin(['a', 'i', 'd'])` | 563 → 557 rows |
+| Derive cost in £ | `df['cost'] = df['now_cost'] / 10` | New column, human-readable |
+
+### Player status codes (undocumented by FPL, community-sourced)
+
+| Code | Meaning | Keep for analysis? |
+|------|---------|--------------------|
+| `a` | Available | ✅ |
+| `i` | Injured | ✅ (has chance_of_playing value) |
+| `d` | Doubtful | ✅ (has chance_of_playing value) |
+| `s` | Suspended | ❌ |
+| `u` | Unavailable (loan/left club) | ❌ |
