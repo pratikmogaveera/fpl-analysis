@@ -184,3 +184,46 @@ df = df[df['status'].isin(['a', 'i', 'd'])]
 | `d` | Doubtful | ✅ (has chance_of_playing value) |
 | `s` | Suspended | ❌ |
 | `u` | Unavailable (loan/left club) | ❌ |
+
+---
+
+## 4. Exploratory Analysis
+
+### Key Concepts
+
+**Sorting a DataFrame:**
+```python
+df.sort_values(by='col', ascending=False)
+```
+Returns a new DataFrame — doesn't mutate the original unless you reassign. Use `temp_df` or inline `.head()` to avoid polluting `players_df`.
+
+**Filtering — `==` vs `.isin()`:**
+- `df[df['col'] == value]` — single value, preferred
+- `df[df['col'].isin([v1, v2])]` — multiple values
+- Don't use `.isin([single_value])` — that's just `==` with extra steps
+
+**Derived metric — points per £:**
+```python
+players_df['points_per_euro'] = players_df['total_points'] / players_df['cost']
+```
+Divides two numeric columns element-wise — no loop needed.
+
+**Correlation:**
+```python
+df[['col1', 'col2']].corr()
+```
+Returns a 2×2 matrix. Diagonal is always 1.0 (self-correlation). Extract the scalar with `.iloc[0].iloc[1]`.
+
+### Key findings (pre-season, GW1 2026/27)
+
+| Analysis | Finding |
+|----------|---------|
+| Top GKP by points | Raya (162), Kelleher (143), Roefs (136) |
+| Top DEF by points | Gabriel (209), Guéhi (179), Van Dijk (175) |
+| Top MID by points | Bruno (235), Semenyo (202), Gibbs-White (188) |
+| Top FWD by points | Haaland (239), Thiago (181), João Pedro (177) |
+| ICT vs total_points correlation | **0.94** — very strong, ICT is a reliable scoring signal |
+| Form | All 0.0 pre-season — not useful until GWs are played |
+
+### Note on form
+`form` is a rolling average of recent GW points — meaningless pre-season. Task 3 (form vs consistency) is deferred to mid-season when real GW data exists.

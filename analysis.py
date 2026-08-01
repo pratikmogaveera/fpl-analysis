@@ -38,15 +38,26 @@ if __name__ == '__main__':
     players_df[col] = pd.to_numeric(players_df[col], errors='coerce')
 
   players_df['chance_of_playing_next_round'] = players_df['chance_of_playing_next_round'].fillna(100)
-
   players_df['ep_next'] = players_df['ep_next'].fillna(0)
-
-  # print(players_df['status'].unique())
-  # print(players_df['removed'].unique())
-
-  print(len(players_df))
   players_df = players_df[players_df['status'].isin(['a', 'i', 'd'])]
-  print(len(players_df))
 
   players_df['cost'] = players_df['now_cost'] / 10
-  print(players_df['cost'].head(5))
+
+  print("\n\nTop Players: Total Points:")
+  for pos in ['GKP', 'DEF', 'MID', 'FWD']:
+    temp_df = players_df[players_df['position'] == pos].sort_values(by='total_points', ascending=False)
+    print(f'{pos} ----------------------------------------')
+    print(temp_df[['full_name', 'total_points']].head(10))
+
+  players_df['points_per_euro'] = players_df['total_points'] / players_df['cost']
+  temp_df = players_df.sort_values(by='points_per_euro', ascending=False)
+  print("\n\nTop Players: Points per euro")
+  print(temp_df[['full_name', 'total_points', 'cost', 'points_per_euro']].head(10))
+
+  temp_df = players_df.sort_values(by='selected_by_percent', ascending=False)
+  print("\n\nTop Players: By Ownership")
+  print(temp_df[['full_name', 'total_points', 'cost', 'points_per_euro', 'selected_by_percent']].head(10))
+
+  print("\n\nICT Index v/s Total Points Correlation:")
+  temp = players_df[['ict_index', 'total_points']].corr()
+  print(temp.iloc[0].iloc[1])

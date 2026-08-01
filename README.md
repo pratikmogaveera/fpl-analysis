@@ -48,7 +48,7 @@ fpl-analysis/
 - [x] Phase 1 — Setup & data exploration
 - [x] Phase 2 — Pandas basics
 - [x] Phase 3 — Data cleaning & normalization
-- [ ] Phase 4 — Exploratory analysis
+- [x] Phase 4 — Exploratory analysis
 - [ ] Phase 5 — Fixture difficulty
 - [ ] Phase 6 — Next GW scoring model
 - [ ] Phase 7 — Visualization
