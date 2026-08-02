@@ -32,10 +32,12 @@ fpl-analysis/
 ├── fetch.py            — fetches bootstrap API, saves JSON + updates xlsx files
 ├── explore.py          — Phase 1: inspect bootstrap JSON structure and player columns
 ├── analysis.py         — Phase 2+: load players DataFrame, add name/team/position columns
+├── models.py           — TypedDict definitions for FPL API responses
 ├── data/
 │   ├── raw/            — weekly JSON snapshots (gw{n}_{date}.json)
 │   ├── players.xlsx    — elements data, one sheet per GW
-│   └── teams.xlsx      — teams data, one sheet per GW
+│   ├── teams.xlsx      — teams data, one sheet per GW
+│   └── fixtures_master.xlsx — fixtures data, one sheet per GW
 ├── DATA.md             — full API field reference
 ├── PLAN.md             — project roadmap
 ├── NOTES.md            — concepts and Q&A per phase
@@ -49,7 +51,7 @@ fpl-analysis/
 - [x] Phase 2 — Pandas basics
 - [x] Phase 3 — Data cleaning & normalization
 - [x] Phase 4 — Exploratory analysis
-- [ ] Phase 5 — Fixture difficulty
+- [x] Phase 5 — Fixture difficulty
 - [ ] Phase 6 — Next GW scoring model
 - [ ] Phase 7 — Visualization
 - [ ] Phase 8 — Notebook consolidation

@@ -227,3 +227,39 @@ Returns a 2×2 matrix. Diagonal is always 1.0 (self-correlation). Extract the sc
 
 ### Note on form
 `form` is a rolling average of recent GW points — meaningless pre-season. Task 3 (form vs consistency) is deferred to mid-season when real GW data exists.
+
+---
+
+## 5. Fixture Difficulty
+
+### Key Concepts
+
+**`pd.read_excel(path, sheet_name='GW1')`** — reads a specific sheet from an xlsx file into a DataFrame. Omit `sheet_name` to read the first sheet.
+
+**`df.rename(columns={old: new})`** — renames columns. Returns a new DataFrame — doesn't mutate. Useful when combining two DataFrames that have different column names but represent the same concept:
+```python
+home = fixtures_df[['team_h', 'team_h_difficulty']].rename(columns={'team_h': 'team_id', 'team_h_difficulty': 'fdr'})
+away = fixtures_df[['team_a', 'team_a_difficulty']].rename(columns={'team_a': 'team_id', 'team_a_difficulty': 'fdr'})
+```
+
+**`pd.concat([df1, df2])`** — stacks two DataFrames vertically (appends rows). Requires matching column names. Use when two DataFrames represent the same type of data from different sources.
+
+**`dict(zip(series1, series2))`** — creates a lookup dict by pairing two Series element-wise. Cleaner than a dict comprehension when both series are already in a DataFrame:
+```python
+dict(zip(fdr_df['team_id'], fdr_df['fdr']))  # → {team_id: fdr, ...}
+```
+
+**`iterrows()` vs vectorized operations** — avoid looping over DataFrame rows with `iterrows()` when possible. Use `.map()`, `.apply()`, or vectorized column operations instead — they're faster and more readable.
+
+### FDR logic
+
+FPL provides `team_h_difficulty` and `team_a_difficulty` per fixture — how hard the match is for the home/away team respectively (scale 1–5, lower = easier).
+
+Steps:
+1. Extract home and away sides as separate DataFrames with unified column names (`team_id`, `fdr`)
+2. `pd.concat` them into one FDR table (20 rows, one per team)
+3. `.map()` onto `players_df['team']` using the `{team_id: fdr}` dict
+
+### Shared types via models.py
+
+`TypedDict` definitions moved to `models.py` — imported wherever needed. Avoids duplication across files. Don't name the file `types.py` — shadows Python's built-in `types` module.
