@@ -37,8 +37,8 @@ The richest table. One row per player.
 | `known_name` | str | Common name (often empty) |
 | `code` | int | Opta player code |
 | `photo` | str | `{code}.jpg` |
-| `team` | int | Team ID (maps to `teams.id`) |
-| `team_code` | int | Team code |
+| `team` | int | Team ID (maps to `teams.id`) — use this to join players to teams |
+| `team_code` | int | Opta external team code (maps to `teams.code`) — same value, different field name |
 | `element_type` | int | Position ID (1=GK, 2=DEF, 3=MID, 4=FWD) |
 | `status` | str | `a`=available, `d`=doubtful, `i`=injured, `s`=suspended, `u`=unavailable |
 | `birth_date` | str | ISO date |
@@ -182,10 +182,10 @@ The richest table. One row per player.
 
 | Field | Notes |
 |-------|-------|
-| `id` | Maps to `elements.team` |
+| `id` | Maps to `elements.team` — **use this as the join key** |
 | `name` | Full name (e.g. "Arsenal") |
 | `short_name` | 3-letter code (e.g. "ARS") |
-| `code` | Team code |
+| `code` | Opta external code — maps to `elements.team_code` (different field, same value) |
 | `played` | Matches played |
 | `win` / `draw` / `loss` | Season record |
 | `points` | League points |
