@@ -50,6 +50,7 @@ def get_gameweek() -> str:
 def load_players(gameweek: str) -> pd.DataFrame:
     players_df = pd.read_excel('./data/players_master.xlsx', sheet_name=gameweek)
     teams_df = pd.read_excel('./data/teams_master.xlsx', sheet_name=gameweek)
+    fixtures_df = pd.read_excel('./data/fixtures_master.xlsx', sheet_name=gameweek)
 
     players_df['full_name'] = players_df['first_name'] + ' ' + players_df['second_name']
     players_df['position'] = players_df['element_type'].map(POSITION_MASTER)
@@ -61,8 +62,14 @@ def load_players(gameweek: str) -> pd.DataFrame:
     players_df['chance_of_playing_next_round'] = players_df['chance_of_playing_next_round'].fillna(100)
     players_df['ep_next'] = players_df['ep_next'].fillna(0)
     players_df = players_df[players_df['status'].isin(['a', 'i', 'd'])]
+    print(f'Total active players (status a/i/d): {len(players_df)}')
     players_df = players_df[players_df['minutes'] >= 900]
     players_df['cost'] = players_df['now_cost'] / 10
+
+    home = fixtures_df[['team_h', 'team_h_difficulty']].rename(columns={'team_h': 'team_id', 'team_h_difficulty': 'fdr'})
+    away = fixtures_df[['team_a', 'team_a_difficulty']].rename(columns={'team_a': 'team_id', 'team_a_difficulty': 'fdr'})
+    fdr_df = pd.concat([home, away])
+    players_df['fdr'] = players_df['team'].map(dict(zip(fdr_df['team_id'], fdr_df['fdr'])))
 
     return players_df
 
