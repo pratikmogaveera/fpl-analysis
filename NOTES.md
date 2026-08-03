@@ -263,3 +263,52 @@ Steps:
 ### Shared types via models.py
 
 `TypedDict` definitions moved to `models.py` — imported wherever needed. Avoids duplication across files. Don't name the file `types.py` — shadows Python's built-in `types` module.
+
+---
+
+## 6. Next GW Scoring Model
+
+### Key Concepts
+
+**Why normalize before scoring?**
+Each factor has a different scale — `chance_of_playing` is 0–100, `fdr` is 1–5, `ep_next` is 0–15. Without normalization, the column with the largest range dominates the score regardless of weight. Min-max scaling squashes all columns to 0–1 so weights are meaningful.
+
+**Min-max normalization formula:**
+```python
+normalized = (value - min) / (max - min)
+```
+Result: 0.0 = worst in dataset, 1.0 = best in dataset.
+
+**Inverting FDR:**
+Lower FDR = easier fixture = better for the player. After normalizing, a low FDR would score 0 (worst). Invert with `1 - fdr_norm` so easy fixtures score high.
+
+**Weighted sum:**
+```python
+players_df['next_gw_score'] = sum([
+    players_df[f'{col}_norm'] * weight
+    for col, weight in WEIGHTS.items()
+])
+```
+Weights must sum to 1.0 — otherwise scores are scaled incorrectly.
+
+**`df.copy()` to defragment:**
+Adding many columns one at a time fragments DataFrame memory internally. `players_df = players_df.copy()` rebuilds it as a clean contiguous block — fixes the `PerformanceWarning`. Call it after all column additions are done.
+
+### Scoring weights used
+
+| Factor | Weight | Reasoning |
+|--------|--------|-----------|
+| `points_per_game` | 0.30 | Best measure of consistent scoring |
+| `ep_next` | 0.25 | FPL's own GW prediction |
+| `fdr` | 0.20 | Fixture difficulty (inverted) |
+| `ict_index` | 0.15 | Influence/creativity/threat composite |
+| `chance_of_playing` | 0.10 | Availability filter |
+
+### GW1 top picks (pre-season)
+
+| Position | Player | Score |
+|----------|--------|-------|
+| GKP | David Raya | 0.761 |
+| DEF | Gabriel | 0.878 |
+| MID | Bruno Fernandes | 0.987 |
+| FWD | Erling Haaland | 0.894 |

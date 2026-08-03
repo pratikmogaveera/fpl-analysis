@@ -1,9 +1,17 @@
 import pandas as pd
 
+GAMEWEEK = 'GW1'
+POSITION_MASTER = {1: 'GKP', 2: 'DEF', 3: 'MID', 4: 'FWD'}
 PLAYERS_NUMERIC_COLUMNS = ['form', 'points_per_game', 'ep_next', 'influence', 'creativity', 'threat', 'ict_index', 'value_form', 'value_season',
                            'selected_by_percent', 'expected_goals', 'expected_assists', 'expected_goal_involvements', 'expected_goals_conceded']
-POSITION_MASTER = {1: 'GKP', 2: 'DEF', 3: 'MID', 4: 'FWD'}
-GAMEWEEK = 'GW1'
+PLAYERS_NORMALIZATION_COLUMNS = ['points_per_game', 'ep_next', 'fdr', 'ict_index', 'chance_of_playing_next_round']
+WEIGHTS = {
+  'points_per_game': 0.3,
+  'ep_next': 0.25,
+  'fdr': 0.2,
+  'ict_index': 0.15,
+  'chance_of_playing_next_round': 0.1,
+}
 
 if __name__ == '__main__':
   players_df = pd.read_excel('./data/players_master.xlsx', sheet_name=GAMEWEEK)
@@ -28,7 +36,7 @@ if __name__ == '__main__':
   players_df['cost'] = players_df['now_cost'] / 10
 
   print("\n\nTop Players: Total Points:")
-  for id, pos in POSITION_MASTER.items():
+  for _, pos in POSITION_MASTER.items():
     temp_df = players_df[players_df['position'] == pos].sort_values(by='total_points', ascending=False)
     print(f'\n{pos} ----------------------------------------')
     print(temp_df[['full_name', 'total_points']].head(10))
@@ -52,6 +60,28 @@ if __name__ == '__main__':
 
   players_df['fdr'] = players_df['team'].map(dict(zip(fdr_df['team_id'], fdr_df['fdr'])))
 
-  print("\n\nTop Players: Diffculty Rating:")
+  print("\n\nTop Players: Difficulty Rating:")
   players_df = players_df.sort_values(by='fdr')
   print(players_df[['full_name', 'team_name', 'fdr']].head(10))
+
+  for col in PLAYERS_NORMALIZATION_COLUMNS:
+    # FDR (Difficulty) Low = Easy (Good), High = Difficult (Bad)
+    # Inverting normalization for FDR as we want HIGH = Good, LOW = Bad.
+    if col == 'fdr':
+      players_df[f'{col}_norm'] = 1 - ((players_df[col] - players_df[col].min()) /
+                                       (players_df[col].max() - players_df[col].min()))
+    else:
+      players_df[f'{col}_norm'] = (players_df[col] - players_df[col].min()) / \
+          (players_df[col].max() - players_df[col].min())
+
+  # Creating a fresh contiguous copy of the DataFrame in memory as pandas internally fragments memory.
+  players_df = players_df.copy()
+
+  players_df['next_gw_score'] = sum([players_df[f'{col}_norm'] * value for col, value in WEIGHTS.items()])
+  players_df = players_df.sort_values(by='next_gw_score', ascending=False)
+
+  print("\n\nTop Predicted Players:")
+  for _, pos in POSITION_MASTER.items():
+    temp_df = players_df[players_df['position'] == pos]
+    print(f'\n{pos} ----------------------------------------')
+    print(temp_df[['full_name', 'next_gw_score']].head(5))

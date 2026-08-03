@@ -52,7 +52,7 @@ fpl-analysis/
 - [x] Phase 3 — Data cleaning & normalization
 - [x] Phase 4 — Exploratory analysis
 - [x] Phase 5 — Fixture difficulty
-- [ ] Phase 6 — Next GW scoring model
+- [x] Phase 6 — Next GW scoring model
 - [ ] Phase 7 — Visualization
 - [ ] Phase 8 — Notebook consolidation
 
