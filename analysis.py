@@ -1,7 +1,7 @@
 import pandas as pd
 
-numeric_columns = ['form', 'points_per_game', 'ep_next', 'influence', 'creativity', 'threat', 'ict_index', 'value_form', 'value_season',
-                   'selected_by_percent', 'expected_goals', 'expected_assists', 'expected_goal_involvements', 'expected_goals_conceded']
+PLAYERS_NUMERIC_COLUMNS = ['form', 'points_per_game', 'ep_next', 'influence', 'creativity', 'threat', 'ict_index', 'value_form', 'value_season',
+                           'selected_by_percent', 'expected_goals', 'expected_assists', 'expected_goal_involvements', 'expected_goals_conceded']
 POSITION_MASTER = {1: 'GKP', 2: 'DEF', 3: 'MID', 4: 'FWD'}
 GAMEWEEK = 'GW1'
 
@@ -14,13 +14,17 @@ if __name__ == '__main__':
   players_df['position'] = players_df['element_type'].map(POSITION_MASTER)
   players_df['team_name'] = players_df['team'].map(dict(zip(teams_df['id'], teams_df['name'])))
 
-  for col in numeric_columns:
+  # Using `errors='coerce'` to enter NaN for invalid values without raising exceptions.
+  for col in PLAYERS_NUMERIC_COLUMNS:
     players_df[col] = pd.to_numeric(players_df[col], errors='coerce')
 
+  # FPL passes values into 'chance_of_playing_next_round' only during issues example 50, 75.
+  # So missing value means player is fit to play. So replacing NA with 100 for calculations.
   players_df['chance_of_playing_next_round'] = players_df['chance_of_playing_next_round'].fillna(100)
   players_df['ep_next'] = players_df['ep_next'].fillna(0)
   players_df = players_df[players_df['status'].isin(['a', 'i', 'd'])]
 
+  # FPL sends cost (euro) multiplied for 10 by default.
   players_df['cost'] = players_df['now_cost'] / 10
 
   print("\n\nTop Players: Total Points:")
