@@ -9,10 +9,6 @@ __pycache__/
 env/
 venv/
 
-# Jupyter
-.ipynb_checkpoints/
-*.ipynb
-
 # Data files — not tracked in git
 data/raw/*.json
 data/*.xlsx

@@ -25,7 +25,7 @@ if __name__ == '__main__':
   corr_matrix = players_df[corr_cols].corr()
 
   fig, ax = plt.subplots()
-  sns.heatmap(corr_matrix, annot=True, fmt='.2f', ax=ax, vmin=0, vmax=12)
+  sns.heatmap(corr_matrix, annot=True, fmt='.2f', ax=ax, vmin=0, vmax=1)
   ax.set_title('Correlation Matrix')
   plt.tight_layout()
   plt.show()

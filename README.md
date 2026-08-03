@@ -34,6 +34,7 @@ fpl-analysis/
 ├── analysis.py         — Phase 2+: load players DataFrame, add name/team/position columns
 ├── viz.py              — Phase 7: charts and GW recommendation table
 ├── models.py           — TypedDict definitions for FPL API responses
+├── fpl_analysis.ipynb  — Phase 8: full analysis notebook (self-contained, runs top to bottom)
 ├── data/
 │   ├── raw/            — weekly JSON snapshots (gw{n}_{date}.json)
 │   ├── players.xlsx    — elements data, one sheet per GW
@@ -55,7 +56,7 @@ fpl-analysis/
 - [x] Phase 5 — Fixture difficulty
 - [x] Phase 6 — Next GW scoring model
 - [x] Phase 7 — Visualization
-- [ ] Phase 8 — Notebook consolidation
+- [x] Phase 8 — Notebook consolidation
 
 ## Resources
 

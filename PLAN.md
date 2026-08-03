@@ -174,3 +174,68 @@ Learn data analysis through FPL data while building a tool that recommends the b
 - Reproducible analysis
 
 **Done when:** Notebook runs top-to-bottom and produces the full analysis cleanly.
+
+---
+
+## 9. Enhancements (Post Phase 8)
+
+### 9a. Dynamic GW detection
+**Goal:** Remove hardcoded `GAMEWEEK = 'GW1'` — detect the latest available GW from xlsx sheets automatically.
+
+**Tasks:**
+- Read sheet names from `players_master.xlsx`
+- Pick the latest one (e.g. `GW10`)
+- Pass as parameter to `build_players_df(gameweek)`
+
+**Done when:** Script works without changing `GAMEWEEK` constant each week.
+
+---
+
+### 9b. Season-aware weight blending
+**Goal:** Blend last season's stats with current season stats as the season progresses.
+
+**Background:** Pre-season and early GWs (1–5), last season's `points_per_game` and `ict_index` are the most reliable signals. As the current season progresses, `form` (rolling recent GW average) becomes more meaningful. With only 1–2 GWs of data, a single 15-point haul skews form unfairly.
+
+**Blended approach:**
+```
+score = (last_season_weight * last_season_stats) + (current_season_weight * current_season_stats)
+```
+
+| Season progress | Last season weight | Current season weight |
+|----------------|-------------------|-----------------------|
+| GW 1–5 | 80% | 20% |
+| GW 6–15 | 50% | 50% |
+| GW 16–25 | 30% | 70% |
+| GW 26+ | 10% | 90% |
+
+**Tasks:**
+- Add `form` to normalization columns
+- Introduce a `season_progress` factor based on current GW
+- Shift `form` weight up and `points_per_game` weight down as GWs progress
+
+**Done when:** Model automatically adjusts weights based on how many GWs have been played.
+
+---
+
+### 9c. Position-specific scoring models
+**Goal:** Different positions score differently — apply position-aware weights.
+
+**Background:** A GK's score should weight `clean_sheets_per_90` and `saves_per_90` heavily. A FWD should weight `expected_goals` and `threat`. Currently all positions use the same formula.
+
+**Tasks:**
+- Define separate `WEIGHTS` dicts per position
+- Apply the correct weights dict based on `position` when computing `next_gw_score`
+
+**Done when:** GKP score uses GK-relevant stats, FWD score uses attacking stats.
+
+---
+
+### 9d. fetch.py robustness
+**Goal:** Make the data pipeline production-ready.
+
+**Tasks:**
+- Add retry logic with exponential backoff for API calls
+- Split `dump_raw_data()` into smaller focused functions
+- Move file paths to a single config block at top of file
+
+**Done when:** `fetch.py` handles transient API failures gracefully without crashing.
