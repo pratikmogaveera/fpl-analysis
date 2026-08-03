@@ -31,8 +31,6 @@ python fetch.py
 fpl-analysis/
 ├── fetch.py            — fetches bootstrap API, saves JSON + updates xlsx files
 ├── explore.py          — Phase 1: inspect bootstrap JSON structure and player columns
-├── analysis.py         — Phase 2+: load players DataFrame, add name/team/position columns
-├── viz.py              — Phase 7: charts and GW recommendation table
 ├── models.py           — TypedDict definitions for FPL API responses
 ├── fpl_analysis.ipynb  — Phase 8: full analysis notebook (self-contained, runs top to bottom)
 ├── data/
