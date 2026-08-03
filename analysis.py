@@ -1,26 +1,18 @@
-import json
-
 import pandas as pd
-
-from models import BootstrapResponse
 
 numeric_columns = ['form', 'points_per_game', 'ep_next', 'influence', 'creativity', 'threat', 'ict_index', 'value_form', 'value_season',
                    'selected_by_percent', 'expected_goals', 'expected_assists', 'expected_goal_involvements', 'expected_goals_conceded']
+position_master = {1: 'GKP', 2: 'DEF', 3: 'MID', 4: 'FWD'}
+gameweek = 'GW1'
 
 if __name__ == '__main__':
-  data: BootstrapResponse
-  with open('./data/raw/fpl-bootstrap.json', 'r') as file:
-    data: BootstrapResponse = json.load(file)
-
-  teams_df = pd.DataFrame(data["teams"])
-  fixtures_df = pd.read_excel('./data/fixtures_master.xlsx')
-
-  players_df = pd.DataFrame(data["elements"])
+  players_df = pd.read_excel('./data/players_master.xlsx', sheet_name=gameweek)
+  teams_df = pd.read_excel('./data/teams_master.xlsx', sheet_name=gameweek)
+  fixtures_df = pd.read_excel('./data/fixtures_master.xlsx', sheet_name=gameweek)
 
   players_df['full_name'] = players_df['first_name'] + ' ' + players_df['second_name']
 
-  players_df['position'] = players_df['element_type'].map(
-    {pos['id']: pos['singular_name_short'] for pos in data["element_types"]})
+  players_df['position'] = players_df['element_type'].map(position_master)
 
   players_df['team_name'] = players_df['team_code'].map(dict(zip(teams_df['code'], teams_df['name'])))
 
@@ -36,7 +28,7 @@ if __name__ == '__main__':
   print("\n\nTop Players: Total Points:")
   for pos in ['GKP', 'DEF', 'MID', 'FWD']:
     temp_df = players_df[players_df['position'] == pos].sort_values(by='total_points', ascending=False)
-    print(f'{pos} ----------------------------------------')
+    print(f'\n{pos} ----------------------------------------')
     print(temp_df[['full_name', 'total_points']].head(10))
 
   players_df['points_per_euro'] = players_df['total_points'] / players_df['cost']
