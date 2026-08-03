@@ -2,19 +2,17 @@ import pandas as pd
 
 numeric_columns = ['form', 'points_per_game', 'ep_next', 'influence', 'creativity', 'threat', 'ict_index', 'value_form', 'value_season',
                    'selected_by_percent', 'expected_goals', 'expected_assists', 'expected_goal_involvements', 'expected_goals_conceded']
-position_master = {1: 'GKP', 2: 'DEF', 3: 'MID', 4: 'FWD'}
-gameweek = 'GW1'
+POSITION_MASTER = {1: 'GKP', 2: 'DEF', 3: 'MID', 4: 'FWD'}
+GAMEWEEK = 'GW1'
 
 if __name__ == '__main__':
-  players_df = pd.read_excel('./data/players_master.xlsx', sheet_name=gameweek)
-  teams_df = pd.read_excel('./data/teams_master.xlsx', sheet_name=gameweek)
-  fixtures_df = pd.read_excel('./data/fixtures_master.xlsx', sheet_name=gameweek)
+  players_df = pd.read_excel('./data/players_master.xlsx', sheet_name=GAMEWEEK)
+  teams_df = pd.read_excel('./data/teams_master.xlsx', sheet_name=GAMEWEEK)
+  fixtures_df = pd.read_excel('./data/fixtures_master.xlsx', sheet_name=GAMEWEEK)
 
   players_df['full_name'] = players_df['first_name'] + ' ' + players_df['second_name']
-
-  players_df['position'] = players_df['element_type'].map(position_master)
-
-  players_df['team_name'] = players_df['team_code'].map(dict(zip(teams_df['code'], teams_df['name'])))
+  players_df['position'] = players_df['element_type'].map(POSITION_MASTER)
+  players_df['team_name'] = players_df['team'].map(dict(zip(teams_df['id'], teams_df['name'])))
 
   for col in numeric_columns:
     players_df[col] = pd.to_numeric(players_df[col], errors='coerce')
@@ -26,7 +24,7 @@ if __name__ == '__main__':
   players_df['cost'] = players_df['now_cost'] / 10
 
   print("\n\nTop Players: Total Points:")
-  for pos in ['GKP', 'DEF', 'MID', 'FWD']:
+  for id, pos in POSITION_MASTER.items():
     temp_df = players_df[players_df['position'] == pos].sort_values(by='total_points', ascending=False)
     print(f'\n{pos} ----------------------------------------')
     print(temp_df[['full_name', 'total_points']].head(10))
