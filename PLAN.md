@@ -179,7 +179,7 @@ Learn data analysis through FPL data while building a tool that recommends the b
 
 ## 9. Enhancements (Post Phase 8)
 
-### 9a. Dynamic GW detection
+### 9a. Dynamic GW detection ✅
 **Goal:** Remove hardcoded `GAMEWEEK = 'GW1'` — detect the latest available GW from xlsx sheets automatically.
 
 **Tasks:**
@@ -217,7 +217,7 @@ score = (last_season_weight * last_season_stats) + (current_season_weight * curr
 
 ---
 
-### 9c. Position-specific scoring models
+### 9c. Position-specific scoring models ✅
 **Goal:** Different positions score differently — apply position-aware weights.
 
 **Background:** A GK's score should weight `clean_sheets_per_90` and `saves_per_90` heavily. A FWD should weight `expected_goals` and `threat`. Currently all positions use the same formula.

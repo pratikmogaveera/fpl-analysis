@@ -399,3 +399,54 @@ Run the model and check if top picks make sense. Bruno, Haaland, Gabriel, Raya a
 - **Pre-season** — `form` is 0, `ep_next` is less accurate. Lean on PPG and ICT.
 - **Mid-season** — `form` becomes meaningful (rolling recent GW points). `ep_next` improves as FPL has current season data. Increase their weights.
 - **End of season** — fixture difficulty matters more for rotation-heavy squads.
+
+---
+
+## 9c. Position-Specific Scoring Models
+
+### Key Concepts
+
+**Why position-specific weights?**
+A generic scoring model treats all positions the same. But a GK scores from clean sheets and saves — not goals. A FWD scores from goals and threat — not clean sheets. Applying position-relevant stats improves ranking quality within each position group.
+
+### Scoring factors per position
+
+| Position | Key factors | Dropped/irrelevant |
+|----------|-------------|-------------------|
+| GKP | `clean_sheets_per_90`, `saves_per_90`, `points_per_game`, `ep_next`, `fdr` | `ict_index` (attacker-biased) |
+| DEF | `clean_sheets_per_90`, `points_per_game`, `ep_next`, `ict_index`, `fdr` | `saves_per_90` |
+| MID | `ict_index`, `points_per_game`, `ep_next`, `clean_sheets_per_90`, `fdr` | `saves_per_90` |
+| FWD | `threat`, `points_per_game`, `ep_next`, `fdr` | `clean_sheets_per_90`, `saves_per_90` |
+
+**`threat` vs `expected_goals` for FWD:**
+Both correlate at 0.97 with each other — using both would double-count the same signal. `threat` is chosen as it's forward-looking (measures attacking intent) vs `expected_goals` which is historical.
+
+**`saves_per_90` for GKP — known limitation:**
+A GK behind a weak defence faces more shots and accumulates higher `saves_per_90`. This inflates scores for GKs on poor defensive teams. Raya (Arsenal, strong defence) scores lower on saves than a GK on a leaky team despite being a better pick. No easy fix without opponent-adjusted stats.
+
+### Minutes filter
+
+Players with fewer than 900 minutes of last-season PL data are excluded:
+```python
+players_df = players_df[players_df['minutes'] >= 900]
+```
+
+**Why 900 minutes (~10 full games)?**
+Per-90 stats on small samples are unreliable. A GK who played 1 game might have 3 saves from that one match, giving a `saves_per_90` that vastly overstates their typical output.
+
+### Known limitation: new signings
+
+Players new to the PL (transferred from abroad) have 0 PL minutes and are excluded by the minutes filter. This is an accepted tradeoff — no reliable data means no reliable score. 
+
+Workarounds (not yet implemented):
+- Use only `ep_next` and `fdr` for new signings (no per-90 stats)
+- This is partially addressed by Phase 9b (season-aware blending) — once new signings play a few GWs, current-season stats start accumulating and can be blended in
+
+### Correlation findings per position (GW1 2026/27)
+
+| Position | Strongest signal | Notes |
+|----------|-----------------|-------|
+| GKP | `clean_sheets_per_90` (0.91), `saves_per_90` (0.90) | Both proxy the same thing: GK involved in clean sheets |
+| DEF | `clean_sheets_per_90` (0.91) | Defenders score heavily from clean sheets |
+| MID | `ict_index` (0.83), `clean_sheets_per_90` (0.83) | ICT captures midfield involvement; clean sheets bonus also significant |
+| FWD | `threat` (0.92), `expected_goals` (0.90) | Near-identical signal — use one only |
