@@ -363,3 +363,39 @@ df.sort_values('score', ascending=False).groupby('position').head(5)
 ### Module pattern
 
 `viz.py` imports `build_players_df` from `analysis.py` — avoids copy-pasting the pipeline. Functions in `analysis.py` outside `if __name__ == '__main__'` are importable as a module.
+
+---
+
+## Weight Decision Methodology
+
+### How to decide weights in a scoring model
+
+**1. Start with the correlation matrix**
+Correlation with the target variable (`total_points`) gives a ranked signal strength. Higher correlation → more predictive → higher weight candidate.
+
+| Feature | Correlation with total_points |
+|---------|-------------------------------|
+| `ict_index` | 0.94 |
+| `points_per_game` | 0.90 |
+| `cost` | 0.60 |
+| `ep_next` | 0.54 |
+| `selected_by_percent` | 0.54 |
+
+**2. Apply domain knowledge**
+Raw correlation isn't everything. `points_per_game` measures season-long consistency — a more stable signal than `ict_index` which can spike for one big game. For FPL, consistent scorers are more reliable picks than one-week performers. So PPG got a higher weight (0.30) than ICT (0.15) despite slightly lower correlation.
+
+**3. Check for collinearity (avoid double-counting)**
+ICT and PPG correlate with each other at **0.83** — they measure similar things. Giving both high weights double-counts the same signal. In a formal model, handle this with PCA or regularization. In a simple weighted model, just cap combined weight of highly correlated pairs.
+
+**4. Handle special features differently**
+- `chance_of_playing` — acts as a penalty, not a reward. Low historical correlation but critical for availability. Keep weight low (0.10) but ensure 0% availability kills the score.
+- `fdr` — forward-looking, not historical. Correlation with past points is meaningless. Weight based on FPL community consensus on how much fixtures matter (~0.20).
+
+**5. Validate with intuition**
+Run the model and check if top picks make sense. Bruno, Haaland, Gabriel, Raya at the top — that's correct. If the output looks wrong, revisit weights.
+
+### When to retune weights
+
+- **Pre-season** — `form` is 0, `ep_next` is less accurate. Lean on PPG and ICT.
+- **Mid-season** — `form` becomes meaningful (rolling recent GW points). `ep_next` improves as FPL has current season data. Increase their weights.
+- **End of season** — fixture difficulty matters more for rotation-heavy squads.
