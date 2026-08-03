@@ -23,6 +23,10 @@ ml   # alias for: source ~/Desktop/Projects/ML/ml-env/bin/activate
 
 # Fetch latest GW data
 python fetch.py
+
+# Explore per-position correlations (for weight tuning)
+python explore.py           # interactive charts
+python explore.py --save    # save as PNG to data/
 ```
 
 ## File Structure
@@ -30,7 +34,7 @@ python fetch.py
 ```
 fpl-analysis/
 ├── fetch.py            — fetches bootstrap API, saves JSON + updates xlsx files
-├── explore.py          — Phase 1: inspect bootstrap JSON structure and player columns
+├── explore.py          — correlation analysis tool for weight tuning (per-position heatmaps)
 ├── models.py           — TypedDict definitions for FPL API responses
 ├── fpl_analysis.ipynb  — Phase 8: full analysis notebook (self-contained, runs top to bottom)
 ├── data/
