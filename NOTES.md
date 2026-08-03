@@ -312,3 +312,54 @@ Adding many columns one at a time fragments DataFrame memory internally. `player
 | DEF | Gabriel | 0.878 |
 | MID | Bruno Fernandes | 0.987 |
 | FWD | Erling Haaland | 0.894 |
+
+---
+
+## 7. Visualization
+
+### Key Concepts
+
+**matplotlib OO API vs stateful API:**
+- `plt.bar(...)` — stateful, operates on "current figure" globally — fine for one chart
+- `fig, ax = plt.subplots()` — OO, explicit figure/axes objects — use when making multiple charts
+- Each `plt.show()` clears the current figure; next `plt.subplots()` starts fresh
+
+**`ax.barh(y, x)`** — horizontal bar chart. Better than `ax.bar` for long labels. Sorts bottom-to-top, so sort ascending before plotting if you want best at top.
+
+**seaborn with matplotlib axes:**
+Pass `ax=ax` to any seaborn function to draw on a specific axes:
+```python
+sns.scatterplot(data=df, x='col1', y='col2', ax=ax)
+sns.heatmap(corr_matrix, annot=True, fmt='.2f', ax=ax)
+sns.kdeplot(data=df, x='col1', y='col2', fill=True, ax=ax)
+```
+
+**`sns.heatmap`** — visualizes a correlation matrix. Key params:
+- `annot=True` — show values inside cells
+- `fmt='.2f'` — format to 2 decimal places
+- `vmin=0, vmax=1` — fix color scale to 0–1 range for absolute comparison
+
+**`sns.kdeplot`** — 2D density plot. Shows where data is concentrated — better than scatter for large datasets with overlapping points. Use `fill=True` for filled contours.
+
+**`df.groupby('col').head(n)`** — returns top n rows per group. Use after sorting to get top n per category:
+```python
+df.sort_values('score', ascending=False).groupby('position').head(5)
+```
+
+**`df.to_string(index=False)`** — prints DataFrame without row index. Cleaner for terminal output.
+
+**Pandas `.style`** — styling API for DataFrames (background gradients, formatting). Only renders visually in Jupyter — use in Phase 8 notebook, not plain scripts.
+
+### Charts built
+
+| Chart | Type | Key insight |
+|-------|------|-------------|
+| Top players by points/£ | `barh` | Best value players are cheap defenders/GKs from last season |
+| ICT vs total points | `scatterplot` | 0.94 correlation, two clear outliers (Bruno, Haaland) |
+| ICT vs total points density | `kdeplot` | Most players cluster at low ICT/low points |
+| Correlation matrix | `heatmap` | ICT (0.94) and PPG (0.90) are strongest total_points predictors |
+| GW recommendation table | `to_string` | Top 5 per position ranked by next_gw_score |
+
+### Module pattern
+
+`viz.py` imports `build_players_df` from `analysis.py` — avoids copy-pasting the pipeline. Functions in `analysis.py` outside `if __name__ == '__main__'` are importable as a module.

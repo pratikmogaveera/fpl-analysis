@@ -32,6 +32,7 @@ fpl-analysis/
 ├── fetch.py            — fetches bootstrap API, saves JSON + updates xlsx files
 ├── explore.py          — Phase 1: inspect bootstrap JSON structure and player columns
 ├── analysis.py         — Phase 2+: load players DataFrame, add name/team/position columns
+├── viz.py              — Phase 7: charts and GW recommendation table
 ├── models.py           — TypedDict definitions for FPL API responses
 ├── data/
 │   ├── raw/            — weekly JSON snapshots (gw{n}_{date}.json)
@@ -53,7 +54,7 @@ fpl-analysis/
 - [x] Phase 4 — Exploratory analysis
 - [x] Phase 5 — Fixture difficulty
 - [x] Phase 6 — Next GW scoring model
-- [ ] Phase 7 — Visualization
+- [x] Phase 7 — Visualization
 - [ ] Phase 8 — Notebook consolidation
 
 ## Resources
