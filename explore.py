@@ -44,7 +44,7 @@ def get_gameweek() -> str:
   data = response.json()
   for event in data['events']:
     if event['is_next']:
-      return f"GW{event['id']}"
+      return f"GW{event['id'] - 1}"
   raise RuntimeError('No upcoming gameweek found.')
 
 

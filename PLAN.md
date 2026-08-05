@@ -239,3 +239,65 @@ score = (last_season_weight * last_season_stats) + (current_season_weight * curr
 - Move file paths to a single config block at top of file
 
 **Done when:** `fetch.py` handles transient API failures gracefully without crashing.
+
+---
+
+### 9e. True last-season ppg blend
+**Goal:** Fix 9b so `points_per_game` in the blend actually refers to last season's data, not the current season's running value.
+
+**Background:** Currently both `points_per_game` and `form` are read from the same weekly snapshot sheet. Mid-season, `points_per_game` is already updated with this season's values — meaning the "last season" side of the blend is not truly last season. The fix is to always read `points_per_game` from the `GW0` sheet (pre-season bootstrap = last season's data) regardless of the current GW.
+
+**Tasks:**
+- Load `GW0` sheet separately, extracting only `code` and `points_per_game`
+- Rename it to `ppg_last_season` to avoid collision
+- Right-join onto `players_df` by `code` (permanent player identifier)
+- For new players with no GW0 entry (promoted clubs, new transfers), fill `ppg_last_season` with `0` or the column median
+- Normalize `ppg_last_season` as a separate column
+- Use `ppg_last_season_norm` in `FORM_AND_PPG_WEIGHTS` instead of `points_per_game_norm`
+
+**Done when:** The blend uses last season's `points_per_game` from GW0, and this season's `form` from the current snapshot.
+
+---
+
+### 9f. Blend current-season ppg into scoring
+**Goal:** Current-season `points_per_game` is discarded once 9e is implemented — but it does carry useful signal mid-season and should be factored in.
+
+**Background:** After 9e, the scoring uses only `ppg_last_season` and `form`. But current-season `points_per_game` (the running season average) is a reliable mid-season signal — more stable than `form` (rolling recent GW average) but more up-to-date than `ppg_last_season`. A three-way blend would be more accurate.
+
+**Proposed approach:**
+```
+consistency_score = (last_w * ppg_last_season_norm)
+                  + (curr_w * 0.6 * ppg_current_norm)
+                  + (curr_w * 0.4 * form_norm)
+```
+
+The split between `ppg_current` and `form` within the current-season weight can be tuned using `explore.py` correlations.
+
+**Tasks:**
+- Keep `points_per_game` from the current sheet as `ppg_current`
+- Normalize it as `ppg_current_norm`
+- Introduce a sub-weight split between `ppg_current` and `form` within `curr_w`
+- Tune the split ratio using correlation data from `explore.py`
+
+**Done when:** All three signals contribute to the consistency score with season-aware weights.
+
+---
+
+### 9g. Smarter low-minutes handling
+**Goal:** Replace the hard 900-minute filter with a solution that down-scales scores for low-minute players without excluding them entirely.
+
+**Background:** The 900-minute hard cutoff is too blunt — players just below the threshold are dropped while those just above are included with full weight. The deeper problem is that low-minute players have unreliable per-90 and form stats, so their scores are inflated by small-sample noise (e.g. a player with 1 game and 12 points ranks above consistent starters).
+
+**Proposed approach:** Multiply the final score by a `minutes_confidence` factor rather than filtering:
+```
+next_gw_score = weighted_score * minutes_confidence
+```
+Where `minutes_confidence` approaches 1.0 for high-minute players and shrinks toward 0 for those with very few minutes. A sigmoid or simple piecewise function works well.
+
+**Tasks:**
+- Remove or relax the `minutes > 900` hard filter
+- Define a `minutes_confidence(minutes)` function (e.g. linear ramp from 0→1 between 0 and 900 minutes, then flat at 1)
+- Multiply each player's `next_gw_score` by their confidence factor
+- Validate: check that Walter Benítez-style outliers no longer outrank consistent starters
+
+**Done when:** Low-minute players are included but appropriately discounted; no hard cutoff artifacts.
