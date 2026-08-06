@@ -456,6 +456,8 @@ Workarounds (not yet implemented):
 
 ## 9b. Season-Aware Weight Blending
 
+> **Note:** This section documents the original two-way blend between `ppg_last` and `form`. It was later enhanced in **9f** to a three-way blend that also includes current-season `points_per_game`. The weight thresholds and `get_season_weights` signature were updated in 9f — refer to the 9f section for the current implementation.
+
 ### Key Concepts
 
 **Why blend last-season vs current-season stats?**
