@@ -283,7 +283,7 @@ The split between `ppg_current` and `form` within the current-season weight can 
 
 ---
 
-### 9g. Smarter low-minutes handling
+### 9g. Smarter low-minutes handling ✅
 **Goal:** Replace the hard 900-minute filter with a solution that down-scales scores for low-minute players without excluding them entirely.
 
 **Background:** The 900-minute hard cutoff is too blunt — players just below the threshold are dropped while those just above are included with full weight. The deeper problem is that low-minute players have unreliable per-90 and form stats, so their scores are inflated by small-sample noise (e.g. a player with 1 game and 12 points ranks above consistent starters).

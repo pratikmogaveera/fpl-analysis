@@ -640,3 +640,60 @@ Early in the season, current-season `ppg_current` and `form` are based on the sa
 
 #### Why 0.45/0.55 at GW11+ rather than 0.5/0.5?
 Pure symmetry has no particular advantage. The slight form bias reflects that `ppg_current` accumulates results across the whole season — early-season form still pulls the average up. Form captures the current trajectory better in the second half of the season.
+
+---
+
+## 9g. minutes_confidence Multiplier Replaces Hard 900-Min Filter
+
+### Key Concepts
+
+**The original problem:**
+Walter Benítez (90 minutes, 1 game) was outranking David Raya (3330 minutes, 37 games) because per-90 stats on 1 game are extreme outliers. A single clean sheet gives `clean_sheets_per_90 = 1.0` and a single match with 3 saves gives `saves_per_90 = 3.0` — both near the top of the dataset. After normalization, Benítez dominated every GKP factor.
+
+The 900-minute hard filter excluded him, but it's blunt — players just below the threshold are dropped entirely while those just above are included at full weight.
+
+**The fix — `minutes_confidence`:**
+Instead of filtering, compute a confidence multiplier and apply it to per-90 stats *before* normalization:
+
+```python
+conf_denominator = curr_gw_id * 90 if curr_gw_id > 0 else 38 * 90
+players_df['minutes_confidence'] = (players_df['minutes'] / conf_denominator).clip(upper=1.0)
+
+for col in ['clean_sheets_per_90', 'saves_per_90']:
+    players_df[col] = players_df[col] * players_df['minutes_confidence']
+```
+
+**How the formula works:**
+`minutes_confidence = minutes_played / (gws_played * 90)`
+
+- A player who played every minute gets `1.0` — full confidence
+- A player who played half the available minutes gets `0.5` — stats halved before normalization
+- Pre-season (`curr_gw_id = 0`): denominator would be `0 * 90 = 0` — division by zero. Guard: use `38 * 90 = 3420` (a full season) as the baseline
+
+**Pre-season example:**
+- Raya: `3330 / 3420 = 0.974` — nearly full confidence
+- Benítez: `90 / 3420 = 0.026` — near-zero confidence. His `clean_sheets_per_90 = 1.0` becomes `0.026`. After normalization he no longer dominates.
+
+**Why apply before normalization (not after):**
+The multiplier dampens the raw stat value. When normalization runs, Benítez's adjusted `clean_sheets_per_90 = 0.026` is near the bottom of the dataset — he gets a low normalized score. If we multiplied *after* normalization, we'd be changing the weighted sum and breaking the 0–1 score scale.
+
+**`.clip(upper=1.0)`:**
+Without clipping, a player could theoretically exceed `1.0` confidence (e.g. if FPL's minutes data has minor overcount errors). `.clip(upper=1.0)` caps it cleanly. Using `min()` on a pandas Series wouldn't work — `.clip()` is the correct vectorized approach.
+
+**Why 90 and not 95 or 100:**
+FPL records minutes in 90-minute blocks — it doesn't include stoppage time. Raya's 3330 minutes / 37 games = exactly 90 per game, confirming the data uses clean 90-minute units.
+
+### Result
+
+Benítez moved from rank 1 to rank 6 in GKP scores. Raya remains at rank 1 with score `0.87` vs Benítez's `0.61`. Low-minute players are still included in the dataset (they can be recommended if forward-looking signals like `ep_next` and `fdr` are strong) but their per-90 stats are appropriately discounted.
+
+### Q&A
+
+#### Why apply the multiplier only to `clean_sheets_per_90` and `saves_per_90` and not all per-90 stats?
+Those are the only two per-90 stats currently in the scoring model for any position. Other per-90 stats (`expected_goals_per_90`, `starts_per_90`, etc.) are in the API data but not in `PLAYERS_NORMALIZATION_COLUMNS`. If more per-90 stats are added to scoring in future, extend the loop.
+
+#### Why not apply the multiplier to `form` and `points_per_game`?
+`form` is handled by the season-aware blending (9b/9f) — at GW0 it gets zero weight, so there's no risk of noise from small samples. `points_per_game` (current season) also gets zero weight at GW0 for the same reason.
+
+#### What happens to genuinely new players with 0 minutes?
+`0 / conf_denominator = 0.0` — their `clean_sheets_per_90` and `saves_per_90` become `0.0`. They still get scored via `ep_next` and `fdr` which don't depend on historical minutes. This is intentional — no per-90 signal, but still rankable via forward-looking data.

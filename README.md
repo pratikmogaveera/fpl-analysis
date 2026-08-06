@@ -64,6 +64,7 @@ fpl-analysis/
 - [x] 9c — Position-specific scoring models (separate weights per GKP/DEF/MID/FWD)
 - [x] 9e — True last-season ppg blend (GW0 sheet joined on `code`; new players fill 0)
 - [x] 9f — Three-way blend: ppg_last + current-season ppg + form with season-aware weights
+- [x] 9g — minutes_confidence multiplier replaces hard 900-min filter for per-90 stats
 
 ## Resources
 
