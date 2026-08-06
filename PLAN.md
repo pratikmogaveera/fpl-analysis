@@ -191,7 +191,7 @@ Learn data analysis through FPL data while building a tool that recommends the b
 
 ---
 
-### 9b. Season-aware weight blending
+### 9b. Season-aware weight blending ✅
 **Goal:** Blend last season's stats with current season stats as the season progresses.
 
 **Background:** Pre-season and early GWs (1–5), last season's `points_per_game` and `ict_index` are the most reliable signals. As the current season progresses, `form` (rolling recent GW average) becomes more meaningful. With only 1–2 GWs of data, a single 15-point haul skews form unfairly.
@@ -242,7 +242,7 @@ score = (last_season_weight * last_season_stats) + (current_season_weight * curr
 
 ---
 
-### 9e. True last-season ppg blend
+### 9e. True last-season ppg blend ✅
 **Goal:** Fix 9b so `points_per_game` in the blend actually refers to last season's data, not the current season's running value.
 
 **Background:** Currently both `points_per_game` and `form` are read from the same weekly snapshot sheet. Mid-season, `points_per_game` is already updated with this season's values — meaning the "last season" side of the blend is not truly last season. The fix is to always read `points_per_game` from the `GW0` sheet (pre-season bootstrap = last season's data) regardless of the current GW.
@@ -259,7 +259,7 @@ score = (last_season_weight * last_season_stats) + (current_season_weight * curr
 
 ---
 
-### 9f. Blend current-season ppg into scoring
+### 9f. Blend current-season ppg into scoring ✅
 **Goal:** Current-season `points_per_game` is discarded once 9e is implemented — but it does carry useful signal mid-season and should be factored in.
 
 **Background:** After 9e, the scoring uses only `ppg_last_season` and `form`. But current-season `points_per_game` (the running season average) is a reliable mid-season signal — more stable than `form` (rolling recent GW average) but more up-to-date than `ppg_last_season`. A three-way blend would be more accurate.

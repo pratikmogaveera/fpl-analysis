@@ -450,3 +450,193 @@ Workarounds (not yet implemented):
 | DEF | `clean_sheets_per_90` (0.91) | Defenders score heavily from clean sheets |
 | MID | `ict_index` (0.83), `clean_sheets_per_90` (0.83) | ICT captures midfield involvement; clean sheets bonus also significant |
 | FWD | `threat` (0.92), `expected_goals` (0.90) | Near-identical signal — use one only |
+
+
+---
+
+## 9b. Season-Aware Weight Blending
+
+### Key Concepts
+
+**Why blend last-season vs current-season stats?**
+Pre-season and early GWs, the live `form` column is noisy — one 15-point haul from a single game skews a rolling average based on 1–2 games. Last season's `points_per_game` is a stable baseline. As the season progresses and more GW data accumulates, `form` becomes reliable and `points_per_game` becomes stale. The model needs to shift trust accordingly.
+
+**The blending approach:**
+```python
+consistency_score = (last_w * ppg_last_norm) + (curr_w * form_norm)
+```
+
+| GWs played | last_w | curr_w |
+|-----------|--------|--------|
+| 0 (pre-season) | 1.0 | 0.0 |
+| 1–5 | 0.8 | 0.2 |
+| 6–15 | 0.5 | 0.5 |
+| 16–25 | 0.3 | 0.7 |
+| 26+ | 0.1 | 0.9 |
+
+**`get_season_weights(gws_played) -> tuple[float, float]`:**
+Returns `(last_w, curr_w)`. Pre-season is treated as 0 GWs played → full weight on last-season data. The `curr_gw_id` variable (derived from `event["id"] - 1`) doubles as the GWs-played count.
+
+**Weights must still sum to 1.0:**
+`ppg_last` and `form` share the same 0.20 budget:
+```python
+FORM_AND_PPG_WEIGHTS = {
+    'ppg_last': 0.20 * last_w,
+    'form':     0.20 * curr_w
+}
+```
+This replaces the old static `'points_per_game': 0.20` entry. Everything else in the position weights dicts stays unchanged.
+
+**Don't mutate constants:**
+Build fresh merged dicts using dict unpacking instead of `.update()`:
+```python
+gkp_weights = {**GKP_WEIGHTS, **FORM_AND_PPG_WEIGHTS}
+```
+This avoids the problem where re-running the scoring cell would double-insert keys into the same dict.
+
+---
+
+## 9e. True Last-Season PPG Blend
+
+### Key Concepts
+
+**The flaw in 9b's original implementation:**
+Both `points_per_game` and `form` were read from the same weekly snapshot. Mid-season, `points_per_game` is already updated with this season's data — so the "last season" side of the blend was not actually last season. The fix: read `points_per_game` from the `GW0` sheet specifically.
+
+**Why GW0?**
+`GW0` is the pre-season bootstrap snapshot — fetched before GW1 is played. At that point, all player stats still reflect the previous season. It's the only sheet guaranteed to hold true last-season data, regardless of when the notebook runs.
+
+**`code` as the stable join key:**
+FPL player `id` can change between seasons. `code` is a permanent player identifier that persists across seasons. Always join historical data on `code`, not `id`.
+
+**Left join — not right join:**
+```python
+players_df_last_season = players_df_last_season[['points_per_game', 'code']].rename(
+    columns={'points_per_game': 'ppg_last'}
+)
+players_df = players_df.merge(players_df_last_season, on='code', how='left')
+players_df['ppg_last'] = players_df['ppg_last'].fillna(0)
+```
+- **Left join** — keeps all current players, looks up their GW0 PPG
+- **Right join would be wrong** — it would keep all GW0 players and drop current players with no GW0 match
+- **`fillna(0)` for new players** — players promoted from abroad or new to PL have no GW0 entry; `0` is a conservative default (no last-season data = no last-season signal). Will be addressed more gracefully in 9f when current-season PPG is added as a third signal.
+
+**Zero-denominator guard in normalization:**
+Pre-season, `form` is `0.0` for every player. Min-max normalization: `(0 - 0) / (0 - 0) = 0/0 = NaN`. Same risk for any column where all values are identical. Fix:
+```python
+col_min = players_df[col].min()
+col_max = players_df[col].max()
+denominator = col_max - col_min if col_max != col_min else 1
+players_df[f'{col}_norm'] = (players_df[col] - col_min) / denominator
+```
+When all values are equal, `denominator = 1` and `col - col_min = 0`, giving `0.0` for everyone — correct, since no player has an advantage on that factor.
+
+---
+
+## Weight Rebalancing (From Correlation Data)
+
+### Key Concepts
+
+**Using `explore.py` to tune weights:**
+`explore.py` generates per-position correlation heatmaps showing each scoring factor's correlation with `total_points`. The heatmap is the evidence base for weight decisions — higher correlation → more predictive → candidate for higher weight.
+
+**`saves_per_90` inversion:**
+`saves_per_90` negatively correlates with `total_points` (−0.18 to −0.72 across positions). A GK making lots of saves plays for a weak team, concedes more, and earns fewer points. It must be inverted like `fdr`:
+```python
+if col in ['fdr', 'saves_per_90']:
+    players_df[f'{col}_norm'] = 1 - ((players_df[col] - col_min) / denominator)
+```
+
+**FDR correlation insight:**
+FDR shows weak correlation with last-season `total_points` (−0.01 to −0.16) across positions. This is expected — season-long stats aggregate many fixtures, so no single fixture difficulty dominates. FDR's value is as a per-GW signal, not across a full season. Keep it in the model but don't over-weight it.
+
+### Weight changes made (backed by correlation data)
+
+| Position | Change | Reason |
+|----------|--------|--------|
+| GKP | `clean_sheets_per_90`: 0.25→0.275 | Strong signal (0.63) |
+| GKP | `saves_per_90`: 0.15→0.125 | Negative correlation — now inverted |
+| DEF | `ict_index`: 0.10→0.25 | Strongest DEF signal (0.88) |
+| DEF | `chance_of_playing`: 0.10→0.05 | Weak signal (0.11) |
+| DEF | `clean_sheets_per_90`: 0.25→0.15 | Moderate signal (0.36), reduced |
+| MID | `ict_index`: 0.25→0.32 | Dominant MID signal (0.92) |
+| MID | `clean_sheets_per_90` | Dropped — near-zero correlation (0.12) |
+| MID | `fdr`: 0.15→0.18 | Small bump to keep weights summing to 1.0 |
+| FWD | `threat`: 0.35→0.375 | Strongest FWD signal (0.95) |
+| FWD | `fdr`: 0.15→0.10 | Near-zero correlation (−0.04) |
+
+All position weight sets still sum to 1.0 after rebalancing.
+
+---
+
+## Q&A
+
+### Why does `ppg_last` use `fillna(0)` rather than the median?
+`0` is a conservative default — a player with no last-season data gets no contribution from the last-season side of the blend. This is intentional: we don't want to artificially inflate a new signing's score with an assumed average. Once they play a few GWs, their current-season `ppg` (9f) and `form` will carry the scoring.
+
+### Why is `GW0` a special sheet?
+`GW0` is the sheet written when `fetch.py` runs before GW1 starts (`event["id"] - 1 = 0`). It contains the bootstrap snapshot from the pre-season window, which is the only time all player stats reflect the completed previous season.
+
+### Why `code` and not `id` as the join key?
+FPL reassigns `id` values between seasons — a player who was `id=123` in 2024/25 might be `id=456` in 2025/26. `code` is a permanent club-assigned identifier that never changes across seasons. Always use `code` for cross-season joins.
+
+### Why is the minutes filter at 900?
+900 minutes ≈ 10 full games. Per-90 stats on fewer appearances are unreliable (one exceptional game dominates the average). This threshold filters out players whose per-90 stats are statistically misleading. Planned replacement in 9g: a `minutes_confidence` multiplier that scales scores down gradually rather than cutting off hard.
+
+---
+
+## 9f. Three-Way Blend: ppg_last + ppg_current + form
+
+### Key Concepts
+
+**Why three signals instead of two?**
+After 9e, the blend was `ppg_last` vs `form`. But this ignores current-season `points_per_game` — a season-to-date average that's more stable than form but more current than last season. Three time horizons give a fuller picture:
+
+| Signal | Memory | Reliability |
+|--------|--------|-------------|
+| `ppg_last` | Full previous season | Stable but stale as season progresses |
+| `points_per_game` (current) | All GWs this season | Medium stability, improves over time |
+| `form` | Last few GWs | Noisy early, reactive and accurate late |
+
+**Updated `get_season_weights` signature:**
+```python
+def get_season_weights(gws_played: int) -> tuple[float, float, float]:
+    # returns (ppg_last_w, ppg_current_w, form_w)
+```
+
+**Weight progression:**
+
+| GWs played | ppg_last | ppg_current | form |
+|-----------|---------|------------|------|
+| 0 (pre-season) | 1.0 | 0 | 0 |
+| 1–3 | 0.7 | 0.2 | 0.1 |
+| 4–6 | 0.4 | 0.3 | 0.3 |
+| 7–10 | 0.1 | 0.4 | 0.5 |
+| 11+ | 0 | 0.45 | 0.55 |
+
+**Why form gets slightly more than ppg_current at GW11+:**
+By mid-to-late season, `points_per_game` accumulates results from the whole season — a player who started well but faded still carries a high season average. `form` captures the current trajectory more accurately, so it gets the edge (0.55 vs 0.45).
+
+**`ppg_last` drops to zero after GW10:**
+After 10 GWs, there's enough current-season data to be self-sufficient. Last season is ancient history at this point — different tactics, different manager, possibly different squad role. Hard cutoff at GW11+ is intentional.
+
+**`FORM_AND_PPG_WEIGHTS` becomes three keys:**
+```python
+FORM_AND_PPG_WEIGHTS = {
+    'ppg_last':        0.20 * ppg_last_w,
+    'points_per_game': 0.20 * ppg_curr_w,
+    'form':            0.20 * form_curr_w,
+}
+```
+The combined budget is still 0.20 — the same as the old static `'points_per_game': 0.20`. All three signals share that budget, so total weights across each position dict still sum to 1.0.
+
+**`points_per_game` was already normalized:**
+No extra work needed — `points_per_game` has been in `PLAYERS_NORMALIZATION_COLUMNS` since earlier phases, so `points_per_game_norm` already exists in the DataFrame.
+
+### Q&A
+
+#### Why does ppg_last have non-zero weight until GW10 rather than GW5/6?
+Early in the season, current-season `ppg_current` and `form` are based on the same 1–9 games. A player who had one great game has inflated stats in both. Last-season data provides a stable anchor to dampen that noise until there's enough current-season evidence to trust.
+
+#### Why 0.45/0.55 at GW11+ rather than 0.5/0.5?
+Pure symmetry has no particular advantage. The slight form bias reflects that `ppg_current` accumulates results across the whole season — early-season form still pulls the average up. Form captures the current trajectory better in the second half of the season.
