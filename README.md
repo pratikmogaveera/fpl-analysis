@@ -20,6 +20,8 @@ The blend between last-season and current-season signals shifts automatically as
 
 Per-90 stats are dampened by a `minutes_confidence` multiplier (`minutes_played / (gws_played × 90)`) so players with very few appearances don't inflate scores via tiny-sample statistics.
 
+The notebook also surfaces **differential picks** — players with low ownership but strong scoring potential, ranked by a combined score that rewards both high `next_gw_score` and low `selected_by_percent`.
+
 ## Tech Stack
 
 - Python 3.12
@@ -63,7 +65,7 @@ This writes three Excel files to `data/`:
 jupyter notebook fpl_analysis.ipynb
 ```
 
-Run all cells top to bottom. The final cell outputs a styled recommendation table with the top 10 players per position ranked by `next_gw_score`.
+Run all cells top to bottom. The notebook outputs three sections: ranked recommendations per position, differential picks, and a personal watchlist lookup.
 
 ### 5. Tune weights (optional)
 
