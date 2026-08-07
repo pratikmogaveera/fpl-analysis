@@ -699,3 +699,33 @@ Those are the only two per-90 stats currently in the scoring model for any posit
 
 #### What happens to genuinely new players with 0 minutes?
 `0 / conf_denominator = 0.0` — their `clean_sheets_per_90` and `saves_per_90` become `0.0`. They still get scored via `ep_next` and `fdr` which don't depend on historical minutes. This is intentional — no per-90 signal, but still rankable via forward-looking data.
+
+---
+
+## Watchlist Player Lookup
+
+### Key Concepts
+
+**What it does:**
+Adds a `position_rank` column to `players_df` showing each player's rank within their position by `next_gw_score`. Then filters the DataFrame by a hardcoded `watchlist` of player `code`s and displays a styled table per position — same format as the main recommendation table but only for the players you care about.
+
+**`df.groupby('position')['col'].rank(ascending=False, method='min')`:**
+Computes rank within each position group independently. `ascending=False` means rank 1 = highest score. `method='min'` handles ties by giving both players the lower rank (e.g. two players tied for 2nd both get rank 2, next is rank 4).
+
+This is a vectorized operation — no loop needed. The result is a Series aligned to `players_df`'s index, so you can assign it directly as a new column.
+
+**Why `code` and not `id` in the watchlist:**
+`code` is the permanent player identifier — stable across seasons. `id` can change. Using `code` means the watchlist stays valid next season without updates.
+
+**Pattern — filter then group:**
+```python
+watchlist = [204936, 210462, ...]
+filtered_players = players_df[players_df['code'].isin(watchlist)]
+
+for _, pos in POSITION_MASTER.items():
+    temp_df = filtered_players[filtered_players['position'] == pos]
+    if temp_df.empty:
+        continue
+    display(temp_df[watchlist_cols].sort_values('position_rank').style...)
+```
+The `if temp_df.empty: continue` guard skips positions with no watchlist players rather than printing an empty table.
