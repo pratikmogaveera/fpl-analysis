@@ -304,7 +304,7 @@ Where `minutes_confidence` approaches 1.0 for high-minute players and shrinks to
 
 ---
 
-### 9h. Differential Player Recommendations
+### 9h. Differential Player Recommendations ✅
 **Goal:** Surface players with low ownership but high scoring potential — useful for FPL managers looking to gain rank by picking under-the-radar options.
 
 **Background:** A "differential" is a player selected by a small percentage of managers. If they score big, you gain a lot of rank. The current recommendation table ranks by `next_gw_score` but doesn't distinguish between heavily-owned players and differentials. Adding a separate differential view helps managers make captaincy and transfer decisions more strategically.

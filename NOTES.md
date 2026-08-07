@@ -729,3 +729,42 @@ for _, pos in POSITION_MASTER.items():
     display(temp_df[watchlist_cols].sort_values('position_rank').style...)
 ```
 The `if temp_df.empty: continue` guard skips positions with no watchlist players rather than printing an empty table.
+
+---
+
+## 9h. Differential Player Recommendations
+
+### Key Concepts
+
+**What is a differential?**
+A player selected by a small percentage of managers. If they score big, you gain rank over the field. If they blank, you lose nothing relative to heavily-owned players who also blanked. The value is asymmetric — high upside, low downside versus the field.
+
+**Why not just filter by ownership threshold?**
+A hard threshold (e.g. ≤10%) misses context — 10% ownership pre-season is different from 10% mid-season when premiums dominate. The table shows all players ranked by differential score and lets the manager decide, rather than excluding players arbitrarily.
+
+**The `differential_score` formula:**
+```python
+differential_score = next_gw_score * selected_by_percent_norm
+```
+Where `selected_by_percent_norm` is inverted min-max normalized *per position group* — so 0 = most owned, 1 = least owned within that position. Multiplying by `next_gw_score` rewards players with both strong scoring potential and low ownership.
+
+**Why normalize per position, not globally?**
+A GK at 8% ownership is normal. A MID at 8% ownership is a genuine differential. Global normalization would treat them the same. Per-position normalization makes the differential signal meaningful within each position's ownership distribution.
+
+**Writing per-position values back with `.loc[mask]`:**
+```python
+mask = players_df['position'] == pos
+players_df.loc[mask, 'selected_by_percent_norm'] = 1 - ((temp_df[col] - col_min) / denominator)
+```
+`temp_df` is a filtered view — computing min/max on it gives position-group stats. `.loc[mask, col]` writes the result back into the correct rows of `players_df` without touching other positions. No merge needed.
+
+**Why not merge back?**
+`merge` on a DataFrame that has a new column added in a loop creates duplicate column names (`_x`, `_y` suffixes) on subsequent iterations, breaking the DataFrame. `.loc` writes in-place to specific rows — the correct pattern for per-group assignments.
+
+### Q&A
+
+#### Why multiply rather than subtract or divide?
+Multiplication penalizes either extreme hard — a player with a great score but high ownership gets dampened; a player with low ownership but a poor score also scores low. You need both signals to be high for a strong differential pick. Subtraction would allow a very low-ownership player with a bad score to rank high.
+
+#### Why is `selected_by_percent_norm` not in `PLAYERS_NORMALIZATION_COLUMNS`?
+Because global normalization would lose the per-position context. It's computed separately in the differential cell with position-aware min/max — adding it to the global normalization loop would overwrite it with an inferior global version.
