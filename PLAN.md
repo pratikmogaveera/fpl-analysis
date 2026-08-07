@@ -301,3 +301,33 @@ Where `minutes_confidence` approaches 1.0 for high-minute players and shrinks to
 - Validate: check that Walter Benítez-style outliers no longer outrank consistent starters
 
 **Done when:** Low-minute players are included but appropriately discounted; no hard cutoff artifacts.
+
+---
+
+### 9h. Differential Player Recommendations
+**Goal:** Surface players with low ownership but high scoring potential — useful for FPL managers looking to gain rank by picking under-the-radar options.
+
+**Background:** A "differential" is a player selected by a small percentage of managers. If they score big, you gain a lot of rank. The current recommendation table ranks by `next_gw_score` but doesn't distinguish between heavily-owned players and differentials. Adding a separate differential view helps managers make captaincy and transfer decisions more strategically.
+
+**Tasks:**
+- Define a `differential_threshold` for `selected_by_percent` (e.g. ≤ 10%)
+- Filter `players_df` for players below the threshold with a meaningful `next_gw_score`
+- Output a per-position differential table alongside the main recommendation table
+- Consider showing the gap between their score and their ownership to highlight the best risk/reward picks
+
+**Done when:** A separate table shows top differentials per position with ownership % visible.
+
+---
+
+### 9i. Value Outlier Detection
+**Goal:** Identify players who are significantly outperforming their price — high `points_per_euro` relative to their position peers.
+
+**Background:** FPL budget is limited. A player scoring 30+ points at £5.0m frees up budget for expensive premiums elsewhere. These "value picks" are often under-priced early in the season before FPL raises their cost. The current model scores players but doesn't explicitly surface price-relative outliers.
+
+**Tasks:**
+- Compute `points_per_euro` per position group (already derived: `total_points / cost`)
+- Identify statistical outliers — players whose `points_per_euro` is significantly above their position average (e.g. > 1.5× the position median)
+- Output a value outlier table per position
+- Optionally flag these in the main recommendation table
+
+**Done when:** A dedicated value picks section highlights players punching above their price bracket per position.
