@@ -768,3 +768,46 @@ Multiplication penalizes either extreme hard — a player with a great score but
 
 #### Why is `selected_by_percent_norm` not in `PLAYERS_NORMALIZATION_COLUMNS`?
 Because global normalization would lose the per-position context. It's computed separately in the differential cell with position-aware min/max — adding it to the global normalization loop would overwrite it with an inferior global version.
+
+---
+
+## Weight Update: defensive_contribution Added to DEF and MID
+
+### What changed
+
+`defensive_contribution` (a native FPL API field — combined defensive metric) was added to the DEF and MID scoring models after correlation analysis showed strong signal:
+
+| Position | `defensive_contribution` corr | Notes |
+|----------|-------------------------------|-------|
+| DEF | 0.79 | Stronger than `clean_sheets_per_90` (0.36), weaker than `ict_index` (0.88) |
+| MID | 0.84 | Near-equal to `ict_index` (0.88), correlated with it at ~0.74 |
+
+**Updated weights:**
+
+DEF: `ep_next` 0.25→0.15, added `defensive_contribution: 0.10`
+MID: `ep_next` 0.15→0.07, added `defensive_contribution: 0.13`
+
+Both position dicts still sum to 0.80 (+ 0.20 FORM_AND_PPG = 1.0).
+
+### Why weights sum to 0.80, not 1.0
+
+Position-specific dicts intentionally leave 0.20 unallocated. That budget is filled at scoring time by `FORM_AND_PPG_WEIGHTS` — the season-aware blend of `ppg_last`, `ppg_current`, and `form`. This shared signal applies equally to all positions, so it's defined separately and merged in via dict unpacking:
+
+```python
+def_weights = {**DEF_WEIGHTS, **FORM_AND_PPG_WEIGHTS}  # sums to 1.0
+```
+
+### minutes_confidence extended to defensive_contribution
+
+`defensive_contribution` is a per-game cumulative stat — small sample players produce inflated values just like `clean_sheets_per_90`. The multiplier was extended:
+
+```python
+for col in ['clean_sheets_per_90', 'saves_per_90', 'defensive_contribution']:
+    players_df[col] = players_df[col] * players_df['minutes_confidence']
+```
+
+This runs before normalization, so outliers from 1–2 game samples are dampened before they can dominate the ranking.
+
+### Double-counting consideration
+
+`ict_index` and `defensive_contribution` correlate with each other (~0.74 for both DEF and MID). Using both adds some redundancy but they measure different things — ICT captures attacking/creative involvement while `defensive_contribution` measures defensive actions. Accepted tradeoff given the correlation with `total_points`.

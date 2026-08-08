@@ -11,10 +11,12 @@ Usage:
 """
 
 import sys
-import pandas as pd
+
 import matplotlib.pyplot as plt
-import seaborn as sns
+import pandas as pd
 import requests
+import seaborn as sns
+
 plt.style.use('dark_background')
 
 POSITION_MASTER = {1: 'GKP', 2: 'DEF', 3: 'MID', 4: 'FWD'}
@@ -23,9 +25,9 @@ POSITION_CORR_COLUMNS = {
     'GKP': ['total_points', 'points_per_game', 'ep_next', 'fdr',
             'chance_of_playing_next_round', 'clean_sheets_per_90', 'saves_per_90'],
     'DEF': ['total_points', 'points_per_game', 'ep_next', 'fdr',
-            'chance_of_playing_next_round', 'ict_index', 'clean_sheets_per_90'],
+            'chance_of_playing_next_round', 'ict_index', 'defensive_contribution', 'clean_sheets_per_90'],
     'MID': ['total_points', 'points_per_game', 'ep_next', 'fdr',
-            'chance_of_playing_next_round', 'ict_index', 'clean_sheets_per_90'],
+            'chance_of_playing_next_round', 'ict_index', 'defensive_contribution', 'clean_sheets_per_90'],
     'FWD': ['total_points', 'points_per_game', 'ep_next', 'fdr',
             'chance_of_playing_next_round', 'threat', 'expected_goals'],
 }
@@ -34,7 +36,7 @@ NUMERIC_COLUMNS = [
     'form', 'points_per_game', 'ep_next', 'influence', 'creativity', 'threat',
     'ict_index', 'value_form', 'value_season', 'selected_by_percent',
     'expected_goals', 'expected_assists', 'expected_goal_involvements',
-    'expected_goals_conceded', 'clean_sheets_per_90', 'saves_per_90',
+    'expected_goals_conceded', 'clean_sheets_per_90', 'saves_per_90', 'defensive_contribution'
 ]
 
 
