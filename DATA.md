@@ -337,3 +337,48 @@ Season split by month. Used for monthly mini-league scoring.
 - **Null fields:** `chance_of_playing_*` is null (not 100) when no injury concern. Treat null as 100%.
 - **Team strength:** `strength_attack/defence` sub-ratings are 0 at season start. Use `strength_overall_home/away` for fixture difficulty early in the season.
 - **Season state:** This data is pre-season (GW1 deadline Aug 21, 2026). No GW has been played yet.
+
+---
+
+## Computed Columns (fpl_analysis.ipynb)
+
+These columns do not exist in the API response. They are derived in the notebook's Computations and Scoring cells.
+
+### Derived from API fields
+
+| Column | Formula | Notes |
+|--------|---------|-------|
+| `full_name` | `first_name + ' ' + second_name` | Display name |
+| `position` | `element_type.map(POSITION_MASTER)` | `GKP / DEF / MID / FWD` |
+| `team_name` | `team.map(teams_df id→name)` | Readable team name |
+| `cost` | `now_cost / 10` | £ value (API stores × 10) |
+| `points_per_euro` | `total_points / cost` | Value metric |
+| `fdr` | mapped from `fixtures_master.xlsx` | Fixture difficulty for upcoming GW (1–5) |
+
+### Cross-season join (from GW0 sheet)
+
+| Column | Source | Notes |
+|--------|--------|-------|
+| `ppg_last` | `points_per_game` from `GW0` sheet, joined on `code` | Last season's PPG. New players (no GW0 entry) get 0. |
+| `minutes_last` | `minutes` from `GW0` sheet, joined on `code` | Last season's minutes. Used to dampen `ppg_last`. |
+
+### Confidence and dampening
+
+| Column | Formula | Notes |
+|--------|---------|-------|
+| `minutes_confidence` | `(minutes / conf_denominator).clip(upper=1.0)` | Current-season confidence. Pre-season: `conf_denominator = 38 × 90`. In-season: `curr_gw_id × 90`. |
+| `ppg_last_confidence` | `(minutes_last / (38 × 90)).clip(upper=1.0)` | Always uses full-season denominator — `ppg_last` is last-season data. |
+
+Columns multiplied by `minutes_confidence` before normalization: `clean_sheets_per_90`, `saves_per_90`, `defensive_contribution`, `points_per_game`, `form`
+
+Columns multiplied by `ppg_last_confidence` before normalization: `ppg_last`
+
+### Scoring
+
+| Column | Formula | Notes |
+|--------|---------|-------|
+| `*_norm` | min-max scaled to 0–1 | One `_norm` column per entry in `PLAYERS_NORMALIZATION_COLUMNS`. `fdr` and `saves_per_90` are inverted (1 − norm). |
+| `next_gw_score` | weighted sum of `_norm` columns | Position-specific weights. Scores 0–1. |
+| `position_rank` | `groupby('position')['next_gw_score'].rank(ascending=False)` | Rank within position by score. |
+| `selected_by_percent_norm` | per-position min-max, inverted | 1 = least owned, 0 = most owned within position. |
+| `differential_score` | `next_gw_score × selected_by_percent_norm` | Combined score rewarding high potential + low ownership. |

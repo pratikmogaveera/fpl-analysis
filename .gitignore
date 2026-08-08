@@ -10,9 +10,7 @@ env/
 venv/
 
 # Data files — not tracked in git
-data/raw/*.json
-data/*.xlsx
-data/*.csv
+data/*
 
 # macOS
 .DS_Store
