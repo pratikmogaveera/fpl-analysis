@@ -12,6 +12,9 @@ venv/
 # Data files — not tracked in git
 data/*
 
+# Personal notes — not for public repo
+personal.md
+
 # macOS
 .DS_Store
 
