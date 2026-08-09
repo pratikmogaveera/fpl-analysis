@@ -331,3 +331,21 @@ Where `minutes_confidence` approaches 1.0 for high-minute players and shrinks to
 - Optionally flag these in the main recommendation table
 
 **Done when:** A dedicated value picks section highlights players punching above their price bracket per position.
+
+
+---
+
+### 10. Squad Optimizer ✅
+**Goal:** Use linear programming to find the optimal 15-player squad under FPL constraints.
+
+**Background:** Manually picking 15 players while respecting budget, position counts, and team limits is tedious and suboptimal. LP solvers find the mathematically optimal selection in milliseconds.
+
+**Tasks:**
+- Install PuLP (`pip install pulp`)
+- Build lookup dicts from `players_df`: score, cost, position-to-codes, team-to-codes
+- Define binary decision variables (one per player)
+- Objective: maximize total `next_gw_score`
+- Constraints: 2 GKP, 5 DEF, 5 MID, 3 FWD; max 3 per team; total cost ≤ £100.0m
+- Solve and display the optimal squad
+
+**Done when:** Running the cell outputs the 15-player squad with highest projected score under all FPL constraints.

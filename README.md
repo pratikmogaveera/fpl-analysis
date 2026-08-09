@@ -22,6 +22,8 @@ Per-90 stats are dampened by a `minutes_confidence` multiplier (`minutes_played 
 
 The notebook also surfaces **differential picks** — players with low ownership but strong scoring potential, ranked by a combined score that rewards both high `next_gw_score` and low `selected_by_percent`.
 
+A **squad optimizer** uses linear programming (PuLP) to find the mathematically optimal 15-player squad under FPL constraints — 2 GKP, 5 DEF, 5 MID, 3 FWD, max 3 per team, total cost ≤ £100.0m.
+
 ## Tech Stack
 
 - Python 3.12
@@ -29,6 +31,7 @@ The notebook also surfaces **differential picks** — players with low ownership
 - matplotlib / seaborn — visualization
 - openpyxl — xlsx read/write
 - requests — HTTP calls to the FPL API
+- PuLP — linear programming solver for squad optimization
 - Jupyter — analysis notebook
 
 ## Getting Started
@@ -65,7 +68,7 @@ This writes three Excel files to `data/`:
 jupyter notebook fpl_analysis.ipynb
 ```
 
-Run all cells top to bottom. The notebook outputs three sections: ranked recommendations per position, differential picks, and a personal watchlist lookup.
+Run all cells top to bottom. The notebook outputs four sections: ranked recommendations per position, differential picks, a personal watchlist lookup, and the optimal squad.
 
 ### 5. Tune weights (optional)
 

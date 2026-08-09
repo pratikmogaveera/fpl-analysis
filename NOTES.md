@@ -811,3 +811,154 @@ This runs before normalization, so outliers from 1–2 game samples are dampened
 ### Double-counting consideration
 
 `ict_index` and `defensive_contribution` correlate with each other (~0.74 for both DEF and MID). Using both adds some redundancy but they measure different things — ICT captures attacking/creative involvement while `defensive_contribution` measures defensive actions. Accepted tradeoff given the correlation with `total_points`.
+
+
+---
+
+## 10. Squad Optimizer (Linear Programming with PuLP)
+
+### Key Concepts
+
+**What is linear programming (LP)?**
+A mathematical method for finding the optimal solution to a problem expressed as linear equations and inequalities. You define:
+1. **Decision variables** — the unknowns (which players to select)
+2. **Objective function** — what to maximize or minimize (total score)
+3. **Constraints** — rules the solution must follow (budget, position counts, team limits)
+
+The solver finds the combination of variables that maximizes the objective while satisfying all constraints.
+
+**PuLP basics:**
+```python
+from pulp import LpProblem, LpMaximize, LpVariable, LpBinary, lpSum, PULP_CBC_CMD
+
+# Create problem
+prob = LpProblem("name", LpMaximize)
+
+# Decision variables — binary (0 or 1)
+x = LpVariable.dicts("select", player_codes, cat=LpBinary)
+
+# Objective — maximize total score
+prob += lpSum([x[code] * score[code] for code in player_codes])
+
+# Constraints
+prob += lpSum([x[code] for code in gkp_codes]) == 2  # exactly 2 GKPs
+prob += lpSum([x[code] * cost[code] for code in player_codes]) <= 100.0  # budget
+
+# Solve (msg=0 suppresses verbose output)
+prob.solve(PULP_CBC_CMD(msg=0))
+
+# Extract solution
+selected = [code for code in player_codes if x[code].value() == 1]
+```
+
+### Constraint Types
+
+**Equality — exactly this value:**
+```python
+prob += lpSum([x[code] for code in gkp_codes]) == 2  # exactly 2 GKPs
+```
+
+**Upper bound — at most:**
+```python
+prob += lpSum([x[code] for code in arsenal_codes]) <= 3  # max 3 per team
+prob += lpSum([x[code] * cost[code] for code in player_codes]) <= 100.0  # budget cap
+```
+
+**Lower bound — at least:**
+```python
+prob += lpSum([x[code] for code in premium_codes]) >= 2  # at least 2 premiums
+```
+
+### Forcing Players In/Out
+
+**Must include (force x = 1):**
+```python
+prob += x[salah_code] == 1  # Salah must be in squad
+```
+
+**Must exclude (force x = 0):**
+```python
+prob += x[injured_code] == 0  # exclude injured player
+```
+
+**Either/or — pick at most one of two players:**
+```python
+prob += x[haaland_code] + x[salah_code] <= 1  # can't have both
+```
+
+**Linked picks — if A then B:**
+```python
+prob += x[player_b] >= x[player_a]  # if a=1, b must be 1
+```
+
+### Pre-Filtering the Player Pool
+
+For simple conditions (e.g. `points_per_euro > 20`), filter the DataFrame before building the LP:
+
+```python
+eligible_df = players_df[players_df["points_per_euro"] > 20].copy()
+player_codes = eligible_df["code"].tolist()
+# ... build all lookups from eligible_df
+```
+
+**Caution:** Aggressive filters can make the LP infeasible if not enough players remain at each position.
+
+Alternative — exclude via constraint:
+```python
+ppe = dict(zip(players_df["code"], players_df["points_per_euro"]))
+for code in player_codes:
+    if ppe[code] <= 20:
+        prob += x[code] == 0
+```
+
+### Soft Constraints (Preferences)
+
+Instead of hard rules, add penalties/rewards to the objective:
+
+**Differential squad (penalize high ownership):**
+```python
+ownership = dict(zip(players_df["code"], players_df["selected_by_percent"]))
+DIFF_WEIGHT = 0.01
+prob += lpSum([x[code] * (score[code] - DIFF_WEIGHT * ownership[code]) for code in player_codes])
+```
+
+**Value picks (reward high points_per_euro):**
+```python
+ppe = dict(zip(players_df["code"], players_df["points_per_euro"]))
+VALUE_WEIGHT = 0.05
+prob += lpSum([x[code] * (score[code] + VALUE_WEIGHT * ppe[code]) for code in player_codes])
+```
+
+### FPL Squad Optimizer Implementation
+
+The notebook cell optimizes for:
+- **Objective:** Maximize total `next_gw_score`
+- **Constraints:**
+  - 2 GKP, 5 DEF, 5 MID, 3 FWD (15 players)
+  - Max 3 players per team
+  - Total cost ≤ £100.0m
+
+**Lookup dicts from DataFrame:**
+```python
+player_codes = players_df["code"].tolist()
+score = dict(zip(players_df["code"], players_df["next_gw_score"]))
+player_cost = dict(zip(players_df["code"], players_df["cost"]))
+position_to_codes = players_df.groupby("position")["code"].apply(list).to_dict()
+team_to_codes = players_df.groupby("team_code")["code"].apply(list).to_dict()
+```
+
+**Result:** Solver finds the 15-player squad that maximizes projected score under all FPL constraints. Runs in ~0.02 seconds.
+
+### Q&A
+
+#### Why use PuLP instead of brute force?
+15 players from 500+ candidates = astronomical combinations. LP solvers use mathematical optimization to find the optimal solution efficiently without evaluating every possibility.
+
+#### Why `LpBinary` for decision variables?
+Each player is either selected (1) or not (0). Binary variables enforce this — the solver cannot pick 0.5 of a player.
+
+#### What if the LP is infeasible?
+The solver returns no solution. Common causes: budget too tight, position requirements impossible to fill, or conflicting must-have constraints. Relax constraints or increase budget.
+
+#### Why rename `cost` dict to `player_cost`?
+Avoids shadowing the `cost` column name in the DataFrame — prevents confusion when debugging.
