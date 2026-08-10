@@ -1,27 +1,24 @@
 import json
 from datetime import date
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 import requests
 
-from models import BootstrapResponse, Fixture
-from typing import Any
-
-
-def fixture_url(gameweek_id):
-  return f'https://fantasy.premierleague.com/api/fixtures/?event={gameweek_id}'
-
+from models import BootstrapResponse
 
 bootstrap_url = 'https://fantasy.premierleague.com/api/bootstrap-static/'
+fixtures_url = 'https://fantasy.premierleague.com/api/fixtures/'
 
 players_master_xlsx_path = "./data/players_master.xlsx"
 teams_master_xlsx_path = "./data/teams_master.xlsx"
 fixture_master_xlsx_path = "./data/fixtures_master.xlsx"
 
 
-def dump_raw_data() -> tuple[int, BootstrapResponse, list[Fixture]] | None:
+def fetch_bootstrap_data() -> tuple[int, BootstrapResponse] | None:
   try:
+    print("Fetching bootstrap data...")
     bootstrap_response = requests.get(bootstrap_url)
     bootstrap_response.raise_for_status()
     bootstrap_data = bootstrap_response.json()
@@ -36,32 +33,25 @@ def dump_raw_data() -> tuple[int, BootstrapResponse, list[Fixture]] | None:
         break
 
     if curr_gw_id is None:
-      print("⚠ No upcoming gameweek is present.")
+      print("⚠ No upcoming gameweek found — season may be over.")
       return
 
     file_name = f"./data/raw/gw_{curr_gw_id}_{date.today()}.json"
 
     if Path(file_name).is_file():
-      print(f"⚠ GW{curr_gw_id} data dump already exists.")
+      print(f"⚠ Raw JSON already exists: {file_name}")
     else:
       with open(file_name, "w") as file:
         json.dump(bootstrap_data, file, indent=2)
-      print(f"✓ GW{curr_gw_id} data successfully dumped.")
+      print(f"✓ Raw JSON saved: {file_name}")
 
-    # Fixtures are fetched for the upcoming GW (curr_gw_id + 1) since that's
-    # what we're predicting for. The sheet is named GW{curr_gw_id} to match
-    # the players/teams sheets — all three form a consistent snapshot.
-    fixture_response = requests.get(fixture_url(curr_gw_id + 1))
-    fixture_response.raise_for_status()
-    fixture_data = fixture_response.json()
-
-    return curr_gw_id, bootstrap_data, fixture_data
+    return curr_gw_id, bootstrap_data
 
   except Exception as e:
-    print(f"✗ Error: {e}")
+    print(f"✗ Bootstrap fetch failed: {e}")
 
 
-def dump_data(data: list[Any], path: str, gw_id: int) -> None:
+def write_xlsx(data: list[Any], path: str, gw_id: int, label: str) -> None:
   try:
     df = pd.DataFrame(data)
 
@@ -73,18 +63,36 @@ def dump_data(data: list[Any], path: str, gw_id: int) -> None:
     with pd.ExcelWriter(path, **writer_kwargs) as writer:  # type: ignore
       df.to_excel(writer, sheet_name=f"GW{gw_id}", index=False)
 
-    print("✓ Data dumped successfully.")
+    print(f"✓ {label}: GW{gw_id} sheet written ({len(df)} rows)")
   except Exception as e:
-    print(f"✗ Data Dump Error: {e}")
+    print(f"✗ {label} write failed: {e}")
+
+
+def generate_fixtures_master():
+  try:
+    print("Fetching all fixtures...")
+    fixture_response = requests.get(fixtures_url)
+    fixture_response.raise_for_status()
+    fixture_data = fixture_response.json()
+
+    df = pd.DataFrame(fixture_data).sort_values(by='id')
+
+    with pd.ExcelWriter(fixture_master_xlsx_path, engine="openpyxl", mode="w") as writer:
+      df.to_excel(writer, sheet_name="Fixtures", index=False)
+
+    print(f"✓ Fixtures master written ({len(df)} fixtures)")
+
+  except Exception as e:
+    print(f"✗ Fixtures fetch failed: {e}")
 
 
 if __name__ == "__main__":
-  result = dump_raw_data()
+  result = fetch_bootstrap_data()
   if result:
-    gw_id, bootstrap_data, fixture_data = result
-    print('Dumping players master...')
-    dump_data(bootstrap_data["elements"], players_master_xlsx_path, gw_id)
-    print('Dumping teams master...')
-    dump_data(bootstrap_data["teams"], teams_master_xlsx_path, gw_id)
-    print('Dumping fixture master...')
-    dump_data(fixture_data, fixture_master_xlsx_path, gw_id)
+    gw_id, bootstrap_data = result
+    print(f"\nWriting GW{gw_id} data...")
+    write_xlsx(bootstrap_data["elements"], players_master_xlsx_path, gw_id, "Players")
+    write_xlsx(bootstrap_data["teams"], teams_master_xlsx_path, gw_id, "Teams")
+    print()
+    generate_fixtures_master()
+    print("\n✓ Done.")
