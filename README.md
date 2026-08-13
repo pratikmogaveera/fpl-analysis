@@ -32,6 +32,7 @@ A **squad optimizer** uses linear programming (PuLP) to find the mathematically 
 - openpyxl — xlsx read/write
 - requests — HTTP calls to the FPL API
 - PuLP — linear programming solver for squad optimization
+- tabulate — markdown table export
 - Jupyter — analysis notebook
 
 ## Getting Started
@@ -68,7 +69,7 @@ This writes three Excel files to `data/`:
 jupyter notebook fpl_analysis.ipynb
 ```
 
-Run all cells top to bottom. The notebook outputs four sections: ranked recommendations per position, differential picks, a personal watchlist lookup, and the optimal squad.
+Run all cells top to bottom. The notebook outputs five sections: ranked recommendations per position, differential picks, a personal watchlist lookup, the optimal squad, and optionally exports everything to a markdown report.
 
 ### 5. Tune weights (optional)
 
@@ -90,6 +91,7 @@ fpl-analysis/
 ├── requirements.txt     — Python dependencies
 ├── data/
 │   ├── raw/             — weekly JSON snapshots (gw{n}_{date}.json)
+│   ├── reports/         — weekly markdown reports (gw{n}-dd-mm-yyyy.md)
 │   ├── players_master.xlsx  — elements data, one sheet per GW (GW0 = pre-season / last season)
 │   ├── teams_master.xlsx    — teams data, one sheet per GW
 │   └── fixtures_master.xlsx — fixtures data, one sheet per GW (fixtures for upcoming GW)

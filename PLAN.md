@@ -349,3 +349,20 @@ Where `minutes_confidence` approaches 1.0 for high-minute players and shrinks to
 - Solve and display the optimal squad
 
 **Done when:** Running the cell outputs the 15-player squad with highest projected score under all FPL constraints.
+
+---
+
+### 11. Markdown Report Export ✅
+**Goal:** Save weekly recommendations to a markdown file for historical reference.
+
+**Background:** Each week's analysis should be preserved for later review — tracking how recommendations performed, comparing week-over-week changes, and building a record of decision-making over the season.
+
+**Tasks:**
+- Add `SAVE_OUTPUT` flag to config cell (default `False`)
+- Create export cell at end of notebook
+- Generate filename as `gw{n}-dd-mm-yyyy.md`
+- Export recommendations (top 15 per position), differentials (top 15 per position), and optimal squad
+- Use pandas `.to_markdown()` for clean table formatting
+- Save to `data/reports/` directory (create if missing)
+
+**Done when:** Setting `SAVE_OUTPUT = True` and running the notebook generates a markdown report in `data/reports/`.
