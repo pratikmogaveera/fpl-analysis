@@ -51,9 +51,15 @@ def get_gameweek() -> str:
 
 
 def load_players(gameweek: str) -> pd.DataFrame:
+  # gameweek is e.g. 'GW2' — derive the next GW id to filter fixtures correctly.
+  curr_gw_id = int(gameweek[2:])
+  next_gw_id = curr_gw_id + 1
+
   players_df = pd.read_excel('./data/players_master.xlsx', sheet_name=gameweek)
   teams_df = pd.read_excel('./data/teams_master.xlsx', sheet_name=gameweek)
-  fixtures_df = pd.read_excel('./data/fixtures_master.xlsx', sheet_name=gameweek)
+  # fixtures_master always has a single 'Fixtures' sheet (all season fixtures).
+  fixtures_df = pd.read_excel('./data/fixtures_master.xlsx', sheet_name='Fixtures')
+  current_gw_fixtures = fixtures_df[fixtures_df['event'] == next_gw_id]
 
   players_df['full_name'] = players_df['first_name'] + ' ' + players_df['second_name']
   players_df['position'] = players_df['element_type'].map(POSITION_MASTER)
@@ -66,11 +72,14 @@ def load_players(gameweek: str) -> pd.DataFrame:
   players_df['ep_next'] = players_df['ep_next'].fillna(0)
   players_df = players_df[players_df['status'].isin(['a', 'i', 'd'])]
   print(f'Total active players (status a/i/d): {len(players_df)}')
-  players_df = players_df[players_df['minutes'] >= 900]
+  # Dynamic minutes threshold: at least 50% of available minutes so far.
+  # Falls back to no filter pre-season (curr_gw_id = 0) to avoid empty heatmaps.
+  min_minutes = curr_gw_id * 45 if curr_gw_id > 0 else 0
+  players_df = players_df[players_df['minutes'] >= min_minutes]
   players_df['cost'] = players_df['now_cost'] / 10
 
-  home = fixtures_df[['team_h', 'team_h_difficulty']].rename(columns={'team_h': 'team_id', 'team_h_difficulty': 'fdr'})
-  away = fixtures_df[['team_a', 'team_a_difficulty']].rename(columns={'team_a': 'team_id', 'team_a_difficulty': 'fdr'})
+  home = current_gw_fixtures[['team_h', 'team_h_difficulty']].rename(columns={'team_h': 'team_id', 'team_h_difficulty': 'fdr'})
+  away = current_gw_fixtures[['team_a', 'team_a_difficulty']].rename(columns={'team_a': 'team_id', 'team_a_difficulty': 'fdr'})
   fdr_df = pd.concat([home, away])
   players_df['fdr'] = players_df['team'].map(dict(zip(fdr_df['team_id'], fdr_df['fdr'])))
 
