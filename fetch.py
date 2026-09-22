@@ -5,6 +5,7 @@ from typing import Any
 
 import pandas as pd
 import requests
+from tqdm import tqdm
 
 from models import BootstrapResponse
 
@@ -19,9 +20,16 @@ fixture_master_xlsx_path = "./data/fixtures_master.xlsx"
 def fetch_bootstrap_data() -> tuple[int, BootstrapResponse] | None:
   try:
     print("Fetching bootstrap data...")
-    bootstrap_response = requests.get(bootstrap_url)
+    bootstrap_response = requests.get(bootstrap_url, stream=True)
     bootstrap_response.raise_for_status()
-    bootstrap_data = bootstrap_response.json()
+
+    total = int(bootstrap_response.headers.get("content-length", 0))
+    chunks: list[bytes] = []
+    with tqdm(total=total, unit="B", unit_scale=True, desc="bootstrap-static") as bar:
+      for chunk in bootstrap_response.iter_content(chunk_size=8192):
+        chunks.append(chunk)
+        bar.update(len(chunk))
+    bootstrap_data = json.loads(b"".join(chunks))
 
     events = bootstrap_data["events"]
     curr_gw_id: int | None = None
@@ -71,9 +79,16 @@ def write_xlsx(data: list[Any], path: str, gw_id: int, label: str) -> None:
 def generate_fixtures_master():
   try:
     print("Fetching all fixtures...")
-    fixture_response = requests.get(fixtures_url)
+    fixture_response = requests.get(fixtures_url, stream=True)
     fixture_response.raise_for_status()
-    fixture_data = fixture_response.json()
+
+    total = int(fixture_response.headers.get("content-length", 0))
+    chunks: list[bytes] = []
+    with tqdm(total=total, unit="B", unit_scale=True, desc="fixtures") as bar:
+      for chunk in fixture_response.iter_content(chunk_size=8192):
+        chunks.append(chunk)
+        bar.update(len(chunk))
+    fixture_data = json.loads(b"".join(chunks))
 
     df = pd.DataFrame(fixture_data).sort_values(by='id')
 
