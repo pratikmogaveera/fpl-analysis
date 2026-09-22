@@ -8,6 +8,8 @@ the WEIGHTS dicts in the notebook.
 Usage:
     python explore.py            # display charts interactively
     python explore.py --save     # save charts as PNG files in data/
+    python explore.py --print    # print correlation matrices as text tables (AI-friendly)
+    python explore.py --save --print  # both
 """
 
 import sys
@@ -143,37 +145,47 @@ def load_players(gameweek: str) -> pd.DataFrame:
     return players_df
 
 
-def plot_correlation(players_df: pd.DataFrame, save: bool = False) -> None:
+def plot_correlation(players_df: pd.DataFrame, save: bool = False, print_mode: bool = False) -> None:
     for pos, cols in POSITION_CORR_COLUMNS.items():
         temp_df = players_df[players_df["position"] == pos][cols].dropna()
         corr_matrix = temp_df.corr()
 
-        _, ax = plt.subplots(figsize=(8, 6))
-        sns.heatmap(
-            corr_matrix,
-            annot=True,
-            fmt=".2f",
-            ax=ax,
-            vmin=-1,
-            vmax=1,
-            cmap="RdYlGn",
-            linewidths=0.5,
-        )
-        ax.set_title(f"Correlation Matrix: {pos} (n={len(temp_df)})")
-        plt.tight_layout()
+        if print_mode:
+            print(f"\n{'='*60}")
+            print(f"Correlation Matrix: {pos}  (n={len(temp_df)})")
+            print(f"{'='*60}")
+            # Round to 2dp and print as a plain table — easy to paste into an AI prompt
+            print(corr_matrix.round(2).to_string())
+            print()
 
-        if save:
-            path = f"./data/corr_{pos.lower()}.png"
-            plt.savefig(path, dpi=150)
-            print(f"Saved: {path}")
-        else:
-            plt.show()
+        if not print_mode or save:
+            _, ax = plt.subplots(figsize=(8, 6))
+            sns.heatmap(
+                corr_matrix,
+                annot=True,
+                fmt=".2f",
+                ax=ax,
+                vmin=-1,
+                vmax=1,
+                cmap="RdYlGn",
+                linewidths=0.5,
+            )
+            ax.set_title(f"Correlation Matrix: {pos} (n={len(temp_df)})")
+            plt.tight_layout()
 
-        plt.close()
+            if save:
+                path = f"./data/corr_{pos.lower()}.png"
+                plt.savefig(path, dpi=150)
+                print(f"Saved: {path}")
+            else:
+                plt.show()
+
+            plt.close()
 
 
 if __name__ == "__main__":
     save_mode = "--save" in sys.argv
+    print_mode = "--print" in sys.argv
 
     print("Fetching current gameweek...")
     gameweek = get_gameweek()
@@ -185,4 +197,4 @@ if __name__ == "__main__":
         f"Loaded {len(players_df)} players (>={int(gameweek[2:]) * 45 if int(gameweek[2:]) > 0 else 0} min)"
     )
 
-    plot_correlation(players_df, save=save_mode)
+    plot_correlation(players_df, save=save_mode, print_mode=print_mode)
